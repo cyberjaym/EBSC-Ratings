@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b1120">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>EBSC Ratings</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1120; --bg2: #131b2e; --card: #172033; --cardHov: #1c2740;
+  --border: #253352; --borderLt: #2f4068;
+  --accent: #34d399; --accentDim: #059669; --accentGlow: rgba(52,211,153,0.15);
+  --warn: #fbbf24; --danger: #f87171; --info: #60a5fa;
+  --text: #e8edf5; --muted: #8899b4; --dim: #506080;
+  --radius: 10px; --radiusLg: 14px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); }
+input, select, textarea, button { font-family: inherit; }
+input, select, textarea {
+  background: var(--bg2); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 12px; font-size: 14px; width: 100%;
+  outline: none; transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select { appearance: auto; }
+textarea { resize: vertical; min-height: 48px; }
+
+.app { display: flex; flex-direction: column; height: 100%; max-width: 540px; margin: 0 auto; position: relative; }
+.header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, #101830 0%, var(--bg) 100%); flex-shrink: 0; }
+.header-row { display: flex; justify-content: space-between; align-items: center; }
+.logo { font-size: 20px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+.logo-sub { font-size: 9px; color: var(--dim); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 1px; }
+.header-actions { display: flex; gap: 4px; }
+.icon-btn { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 6px 8px; border-radius: 8px; transition: all 0.15s; }
+.icon-btn:active { background: var(--accentGlow); color: var(--accent); }
+.filters { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.filter-row { display: flex; gap: 6px; }
+.filter-row > * { flex: 1; min-width: 0; }
+
+.content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 72px; -webkit-overflow-scrolling: touch; }
+.content::-webkit-scrollbar { width: 0; }
+
+.bottom-nav {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: #0d1525; border-top: 1px solid var(--border);
+  display: flex; padding: 5px 0 calc(5px + var(--safe-b)); z-index: 100;
+}
+.nav-btn { flex: 1; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: var(--dim); transition: color 0.15s; }
+.nav-btn.active { color: var(--accent); }
+.nav-btn .nav-icon { font-size: 18px; }
+.nav-btn .nav-label { font-size: 10px; font-weight: 500; }
+
+.btn {
+  border: none; border-radius: var(--radius); padding: 10px 18px; font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex;
+  align-items: center; gap: 6px;
+}
+.btn-p { background: var(--accent); color: #0b1120; }
+.btn-p:active { background: var(--accentDim); }
+.btn-s { background: var(--bg2); color: var(--muted); border: 1px solid var(--border); }
+.btn-d { background: #3b1111; color: var(--danger); }
+.btn-g { background: transparent; color: var(--muted); padding: 6px 10px; font-size: 12px; }
+.btn:disabled { opacity: 0.4; }
+
+.player-row {
+  display: flex; align-items: center; gap: 10px; padding: 11px 16px;
+  border-bottom: 1px solid rgba(37,51,82,0.5); cursor: pointer; transition: background 0.1s;
+}
+.player-row:active { background: var(--card); }
+.player-info { flex: 1; min-width: 0; }
+.player-name { font-size: 14px; font-weight: 600; }
+.player-meta { font-size: 11px; color: var(--dim); margin-top: 1px; }
+
+.rating-dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%; color: #fff;
+  font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.rating-dot.r1 { background: #10b981; } .rating-dot.r2 { background: #38bdf8; }
+.rating-dot.r3 { background: #a78bfa; } .rating-dot.r4 { background: #fbbf24; }
+.rating-dot.r5 { background: #f87171; }
+.rating-dot.empty { background: none; border: 1px dashed var(--border); color: var(--dim); font-size: 10px; }
+
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.stat-card { background: var(--card); border-radius: var(--radiusLg); padding: 14px 16px; border: 1px solid var(--border); }
+.stat-val { font-size: 28px; font-weight: 800; }
+.stat-label { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.7);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+.modal-sheet {
+  background: var(--bg); border-radius: 20px 20px 0 0; width: 100%; max-width: 600px;
+  max-height: 92vh; overflow-y: auto; padding: 20px 18px calc(24px + var(--safe-b));
+  animation: slideUp 0.2s ease;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-title { font-size: 17px; font-weight: 700; }
+.modal-close { background: none; border: none; color: var(--dim); font-size: 22px; cursor: pointer; padding: 0 4px; }
+
+.form-group { margin-bottom: 12px; }
+.form-label { font-size: 11px; color: var(--dim); margin-bottom: 4px; font-weight: 500; }
+
+.rating-picker { display: flex; gap: 6px; margin-bottom: 4px; }
+.rating-pick-btn {
+  width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--bg2); color: var(--muted); font-weight: 700; font-size: 15px;
+  cursor: pointer; transition: all 0.15s;
+}
+.rating-pick-btn.sel { border: 2px solid var(--accent); background: var(--accent); color: #0b1120; }
+
+.skill-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.skill-label { width: 100px; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.skill-btns { display: flex; gap: 4px; }
+.skill-btn {
+  width: 28px; height: 28px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--border); background: var(--bg2); color: var(--dim);
+  transition: all 0.12s;
+}
+.skill-btn.sel { border: 2px solid var(--accent); background: var(--accent); color: #0b1120; }
+.skill-btn.sel-zero { border: 2px solid var(--accent); background: var(--border); color: var(--text); }
+
+.skill-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 3px; }
+.skill-bar-label { width: 90px; color: var(--muted); flex-shrink: 0; }
+.skill-bar-track { flex: 1; height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+.skill-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+.log-entry { padding: 10px 16px; border-bottom: 1px solid rgba(37,51,82,0.4); display: flex; gap: 10px; align-items: flex-start; }
+.log-badge { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 2px; white-space: nowrap; letter-spacing: 0.3px; }
+
+.rating-card { background: var(--card); border-radius: var(--radiusLg); padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; background: var(--card); border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.12s; margin: 0 4px 4px 0; }
+.chip:active, .chip.active { background: var(--accentGlow); border-color: var(--accent); color: var(--accent); }
+.chip .chip-x { font-size: 13px; margin-left: 2px; color: var(--danger); }
+
+.toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #0b1120; padding: 8px 22px; border-radius: 20px;
+  font-size: 13px; font-weight: 600; z-index: 1200; animation: slideUp 0.2s ease;
+  box-shadow: 0 4px 24px rgba(52,211,153,0.3);
+}
+
+.empty { text-align: center; color: var(--dim); padding: 48px 20px; font-size: 13px; }
+
+.section-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; padding: 0 16px; }
+.sub-section { font-size: 12px; font-weight: 600; color: var(--muted); margin: 14px 0 6px; }
+
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+</style>
+</head>
+<body>
+<div id="app" class="app"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   EBSC RATINGS — PWA Player Evaluation Tracker
+   ═══════════════════════════════════════════════════════════════ */
+
+const DB = "ebsc_ratings_v4";
+const DEFAULT_DIVISIONS = ["U5/U6","U7/U8","U9","U10","U11/U12"];
+const DEFAULT_SKILLS = ["Footwork","Ball Handling","Shot Power","Speed","Passing","Feel for Game"];
+const RATING_LABELS = {1:"Elite",2:"Strong",3:"Solid",4:"Developing",5:"Needs Work"};
+const RATING_COLORS = {1:"#10b981",2:"#38bdf8",3:"#a78bfa",4:"#fbbf24",5:"#f87171"};
+
+const genId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const nowISO = () => new Date().toISOString();
+const fmtDate = iso => { try { return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); } catch{return iso;} };
+const fmtDT = iso => { try { return new Date(iso).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}); } catch{return iso;} };
+const esc = s => String(s).replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+// ── State ──
+let state = {
+  db: null, tab: "roster", search: "", divFilter: "", teamFilter: "", raterFilter: "",
+  modal: null, // {type, data}
+  toast: "", toastTimer: null
+};
+
+function loadDB() {
+  try { const r = localStorage.getItem(DB); if(r) return JSON.parse(r); } catch{}
+  return { players:[], ratings:[], changelog:[], divisions:[...DEFAULT_DIVISIONS], customFields:[...DEFAULT_SKILLS], settings:{} };
+}
+function save() { localStorage.setItem(DB, JSON.stringify(state.db)); }
+function log(action, detail) {
+  state.db.changelog.unshift({id:genId(),action,detail,ts:nowISO()});
+  if(state.db.changelog.length>500) state.db.changelog.length=500;
+}
+function flash(msg) {
+  clearTimeout(state.toastTimer);
+  state.toast = msg;
+  render();
+  state.toastTimer = setTimeout(() => { state.toast=""; render(); }, 2500);
+}
+function getTeams() { return [...new Set(state.db.players.map(p=>p.team).filter(Boolean))].sort(); }
+function getRaters() { return [...new Set(state.db.ratings.map(r=>r.ratedBy).filter(Boolean))].sort(); }
+function getLatest(pid) { const r=state.db.ratings.filter(x=>x.playerId===pid); return r.length ? r.reduce((a,b)=>a.ts>b.ts?a:b) : null; }
+function getAvg(pid) { const r=state.db.ratings.filter(x=>x.playerId===pid&&x.overall); return r.length ? (r.reduce((s,x)=>s+x.overall,0)/r.length).toFixed(1) : null; }
+function getCount(pid) { return state.db.ratings.filter(x=>x.playerId===pid).length; }
+
+function getFilteredPlayers() {
+  const {divFilter,teamFilter,search} = state;
+  return state.db.players.filter(p => {
+    if(divFilter && p.division!==divFilter) return false;
+    if(teamFilter && p.team!==teamFilter) return false;
+    if(search) { const q=search.toLowerCase(); if(!`${p.firstName} ${p.lastName} ${p.division} ${p.team}`.toLowerCase().includes(q)) return false; }
+    return true;
+  }).sort((a,b) => {
+    const da=state.db.divisions.indexOf(a.division), db2=state.db.divisions.indexOf(b.division);
+    if(da!==db2) return da-db2;
+    return a.lastName.localeCompare(b.lastName);
+  });
+}
+
+// ── Rendering ──
+const $ = sel => document.querySelector(sel);
+const app = () => document.getElementById("app");
+
+function h(tag, attrs, ...children) {
+  const parts = [`<${tag}`];
+  if(attrs) for(const[k,v] of Object.entries(attrs)) {
+    if(k.startsWith("on") || k==="checked" || k==="selected" || k==="disabled") continue;
+    if(v!==false && v!==null && v!==undefined) parts.push(` ${k}="${esc(String(v))}"`);
+    if(k==="checked" && v) parts.push(` checked`);
+    if(k==="selected" && v) parts.push(` selected`);
+    if(k==="disabled" && v) parts.push(` disabled`);
+  }
+  const voids = new Set(["input","br","hr","img","meta","link"]);
+  if(voids.has(tag)) { parts.push("/>"); return parts.join(""); }
+  parts.push(">");
+  for(const c of children) { if(c!=null && c!==false) parts.push(String(c)); }
+  parts.push(`</${tag}>`);
+  return parts.join("");
+}
+
+function ratingDot(val, size) {
+  if(!val) return `<span class="rating-dot empty" style="width:${size||30}px;height:${size||30}px">—</span>`;
+  return `<span class="rating-dot r${val}" style="width:${size||30}px;height:${size||30}px">${val}</span>`;
+}
+
+function selectHTML(id, value, options, placeholder, style) {
+  let html = `<select id="${id}" ${style?`style="${style}"`:""}><option value="">${esc(placeholder||"")}</option>`;
+  for(const o of options) html += `<option value="${esc(o)}" ${o===value?"selected":""}>${esc(o)}</option>`;
+  return html + `</select>`;
+}
+
+function render() {
+  const db = state.db;
+  const teams = getTeams();
+  const showFilters = state.tab==="roster"||state.tab==="ratings";
+  let html = "";
+
+  // Header
+  html += `<div class="header">
+    <div class="header-row">
+      <div><div class="logo">EBSC Ratings</div><div class="logo-sub">Player Evaluation Tracker</div></div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="openModal('settings')" title="Settings">⚙</button>
+        <button class="icon-btn" onclick="openModal('share')" title="Share">🔗</button>
+        <button class="icon-btn" onclick="openModal('export')" title="Export">📤</button>
+      </div>
+    </div>`;
+  if(showFilters) {
+    html += `<div class="filters">
+      <input id="searchInput" type="text" placeholder="Search players, teams, raters..." value="${esc(state.search)}">
+      <div class="filter-row">
+        ${selectHTML("divFilterSel", state.divFilter, db.divisions, "All Divisions")}
+        ${selectHTML("teamFilterSel", state.teamFilter, teams, "All Teams")}
+      </div>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // Content
+  html += `<div class="content" id="contentArea">`;
+  if(state.tab==="dashboard") html += renderDashboard();
+  else if(state.tab==="roster") html += renderRoster();
+  else if(state.tab==="ratings") html += renderRatings();
+  else if(state.tab==="log") html += renderLog();
+  html += `</div>`;
+
+  // Bottom nav
+  const tabs = [{id:"dashboard",label:"Home",icon:"◉"},{id:"roster",label:"Players",icon:"⚽"},{id:"ratings",label:"Ratings",icon:"★"},{id:"log",label:"Log",icon:"◷"}];
+  html += `<div class="bottom-nav">`;
+  for(const t of tabs) html += `<button class="nav-btn ${state.tab===t.id?"active":""}" onclick="switchTab('${t.id}')"><span class="nav-icon">${t.icon}</span><span class="nav-label">${t.label}</span></button>`;
+  html += `</div>`;
+
+  // Modal
+  if(state.modal) html += renderModal();
+
+  // Toast
+  if(state.toast) html += `<div class="toast">${esc(state.toast)}</div>`;
+
+  app().innerHTML = html;
+  bindEvents();
+}
+
+function bindEvents() {
+  const si = document.getElementById("searchInput");
+  if(si) si.oninput = e => { state.search=e.target.value; render(); const el=document.getElementById("searchInput"); if(el){el.focus();el.selectionStart=el.selectionEnd=el.value.length;} };
+  const df = document.getElementById("divFilterSel");
+  if(df) df.onchange = e => { state.divFilter=e.target.value; render(); };
+  const tf = document.getElementById("teamFilterSel");
+  if(tf) tf.onchange = e => { state.teamFilter=e.target.value; render(); };
+  const rf = document.getElementById("raterFilterSel");
+  if(rf) rf.onchange = e => { state.raterFilter=e.target.value; render(); };
+  const fu = document.getElementById("csvFileInput");
+  if(fu) fu.onchange = handleFileUpload;
+}
+
+// ── Tab content renderers ──
+
+function renderDashboard() {
+  const db = state.db;
+  const total = db.players.length, totalR = db.ratings.length;
+  const rated = new Set(db.ratings.map(r=>r.playerId)).size;
+  let html = `<div style="padding:14px">`;
+  html += `<div class="stat-grid">`;
+  html += `<div class="stat-card"><div class="stat-val" style="color:var(--accent)">${total}</div><div class="stat-label">Players</div></div>`;
+  html += `<div class="stat-card"><div class="stat-val" style="color:#38bdf8">${totalR}</div><div class="stat-label">Ratings</div></div>`;
+  html += `<div class="stat-card"><div class="stat-val" style="color:#a78bfa">${rated}</div><div class="stat-label">Rated</div></div>`;
+  html += `<div class="stat-card"><div class="stat-val" style="color:#fbbf24">${total-rated}</div><div class="stat-label">Unrated</div></div>`;
+  html += `</div>`;
+
+  const byDiv = db.divisions.map(d => {
+    const ps = db.players.filter(p=>p.division===d);
+    const rs = db.ratings.filter(r=>ps.find(p=>p.id===r.playerId));
+    const avg = rs.length ? (rs.reduce((s,r)=>s+(r.overall||0),0)/rs.length).toFixed(1) : "—";
+    return {d,n:ps.length,r:rs.length,avg};
+  }).filter(x=>x.n>0);
+
+  if(byDiv.length) {
+    html += `<div class="section-title" style="padding:0;margin-bottom:10px">By Division</div>`;
+    for(const d of byDiv) {
+      html += `<div style="display:flex;justify-content:space-between;padding:10px 12px;background:var(--card);border-radius:var(--radius);margin-bottom:6px;border:1px solid var(--border);cursor:pointer" onclick="state.divFilter='${esc(d.d)}';switchTab('roster')">
+        <div><div style="font-size:14px;font-weight:600">${esc(d.d)}</div><div style="font-size:11px;color:var(--dim)">${d.n} players · ${d.r} ratings</div></div>
+        <div style="text-align:right"><div style="font-size:22px;font-weight:800;color:var(--accent)">${d.avg}</div><div style="font-size:9px;color:var(--dim)">avg</div></div>
+      </div>`;
+    }
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function renderRoster() {
+  const fp = getFilteredPlayers();
+  let html = `<div style="padding:10px 16px;display:flex;gap:8px">
+    <button class="btn btn-p" onclick="openModal('addPlayer')" style="font-size:12px">+ Add Player</button>
+    <button class="btn btn-s" onclick="openModal('upload')" style="font-size:12px">Upload CSV</button>
+  </div>`;
+  html += `<div style="font-size:11px;color:var(--dim);padding:0 16px 6px">${fp.length} player${fp.length!==1?"s":""}</div>`;
+
+  if(!fp.length) return html + `<div class="empty">No players found. Add players or adjust filters.</div>`;
+
+  for(const p of fp) {
+    const latest = getLatest(p.id), count = getCount(p.id);
+    html += `<div class="player-row" onclick="openModal('detail','${p.id}')">
+      ${latest ? ratingDot(latest.overall) : ratingDot(null)}
+      <div class="player-info">
+        <div class="player-name">${esc(p.firstName)} ${esc(p.lastName)}</div>
+        <div class="player-meta">${esc(p.division)}${p.team?" · "+esc(p.team):""}${count>0?` · ${count} rating${count>1?"s":""}`:""}</div>
+      </div>
+      <button class="btn btn-g" onclick="event.stopPropagation();openModal('rate','${p.id}')" style="color:var(--accent)">Rate</button>
+    </div>`;
+  }
+  return html;
+}
+
+function renderRatings() {
+  const raters = getRaters();
+  let html = `<div style="padding:8px 16px">${selectHTML("raterFilterSel", state.raterFilter, raters, "All Raters")}</div>`;
+  const items = state.db.ratings.map(r => {
+    const p = state.db.players.find(x=>x.id===r.playerId);
+    return p ? {...r, player:p} : null;
+  }).filter(Boolean).filter(r => {
+    if(state.divFilter && r.player.division!==state.divFilter) return false;
+    if(state.teamFilter && r.player.team!==state.teamFilter) return false;
+    if(state.raterFilter && r.ratedBy!==state.raterFilter) return false;
+    if(state.search) { const q=state.search.toLowerCase(); if(!`${r.player.firstName} ${r.player.lastName} ${r.ratedBy} ${r.player.team}`.toLowerCase().includes(q)) return false; }
+    return true;
+  }).sort((a,b) => b.ts.localeCompare(a.ts));
+
+  if(!items.length) return html + `<div class="empty">No ratings match filters</div>`;
+  for(const r of items) {
+    html += `<div class="player-row" onclick="openModal('detail','${r.player.id}')">
+      ${ratingDot(r.overall)}
+      <div class="player-info">
+        <div class="player-name">${esc(r.player.firstName)} ${esc(r.player.lastName)}</div>
+        <div class="player-meta">${esc(r.player.division)}${r.player.team?" · "+esc(r.player.team):""} · by ${esc(r.ratedBy)}</div>
+      </div>
+      <div style="font-size:10px;color:var(--dim)">${fmtDate(r.ts)}</div>
+    </div>`;
+  }
+  return html;
+}
+
+function renderLog() {
+  const cl = state.db.changelog;
+  if(!cl.length) return `<div class="empty">No changes recorded yet</div>`;
+  let html = "";
+  for(const c of cl.slice(0,200)) {
+    const isDel=c.action.includes("DELETE"), isEdit=c.action.includes("EDIT"), isImp=c.action.includes("IMPORT");
+    const bg = isDel?"#3b1111":isEdit?"#3b2a06":isImp?"#0c2444":"#062e21";
+    const fg = isDel?"#fca5a5":isEdit?"#fbbf24":isImp?"#7dd3fc":"#6ee7b7";
+    html += `<div class="log-entry">
+      <span class="log-badge" style="background:${bg};color:${fg}">${esc(c.action)}</span>
+      <div><div style="font-size:12px">${esc(c.detail)}</div><div style="font-size:10px;color:var(--dim)">${fmtDT(c.ts)}</div></div>
+    </div>`;
+  }
+  return html;
+}
+
+// ── Modal rendering ──
+
+function renderModal() {
+  const m = state.modal;
+  let content = "";
+  if(m.type==="addPlayer") content = renderAddPlayerModal(m.data);
+  else if(m.type==="upload") content = renderUploadModal();
+  else if(m.type==="rate") content = renderRateModal(m.data);
+  else if(m.type==="detail") content = renderDetailModal(m.data);
+  else if(m.type==="export") content = renderExportModal();
+  else if(m.type==="share") content = renderShareModal();
+  else if(m.type==="settings") content = renderSettingsModal();
+  else if(m.type==="editRating") content = renderRateModal(m.data, true);
+  return `<div class="modal-overlay" onclick="closeModal()">${content}</div>`;
+}
+
+function modalWrap(title, body, wide) {
+  return `<div class="modal-sheet${wide?" wide":""}" onclick="event.stopPropagation()" style="${wide?"max-width:700px":""}">
+    <div class="modal-header"><div class="modal-title">${title}</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+    ${body}
+  </div>`;
+}
+
+function renderAddPlayerModal(editId) {
+  const p = editId ? state.db.players.find(x=>x.id===editId) : null;
+  const title = p ? "Edit Player" : "Add Player";
+  const fn = p ? p.firstName : "";
+  const ln = p ? p.lastName : "";
+  const div = p ? p.division : (state.db.divisions[0]||"");
+  const team = p ? (p.team||"") : "";
+  const bd = p ? (p.birthdate||"") : "";
+  // Custom fields
+  const cf = p ? (p.customData||{}) : {};
+
+  let body = `<div style="display:flex;flex-direction:column;gap:10px">
+    <input id="apFirst" placeholder="First Name" value="${esc(fn)}">
+    <input id="apLast" placeholder="Last Name" value="${esc(ln)}">
+    ${selectHTML("apDiv", div, state.db.divisions, "Division")}
+    <input id="apTeam" placeholder="Team Name" value="${esc(team)}">
+    <input id="apDOB" type="date" value="${esc(bd)}">`;
+
+  // Render any custom player fields from settings
+  const playerFields = (state.db.playerFields||[]);
+  for(const f of playerFields) {
+    const val = cf[f]||"";
+    body += `<div class="form-group"><div class="form-label">${esc(f)}</div><input class="custom-pf" data-field="${esc(f)}" value="${esc(val)}"></div>`;
+  }
+
+  body += `<button class="btn btn-p" onclick="savePlayer('${editId||""}')">${p?"Save Changes":"Add Player"}</button></div>`;
+  return modalWrap(title, body);
+}
+
+function renderUploadModal() {
+  let body = `<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Upload CSV or TSV. Map columns to fields. Duplicates (same name+division) are skipped.</p>
+    <input id="csvFileInput" type="file" accept=".csv,.tsv,.txt" style="font-size:13px;margin-bottom:12px">
+    <div id="uploadPreview"></div>`;
+  return modalWrap("Upload Players (CSV)", body, true);
+}
+
+window._uploadRows = [];
+window._uploadHeaders = [];
+window._uploadMap = {};
+
+function handleFileUpload(e) {
+  const file = e.target.files?.[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result;
+    const lines = text.split(/\r?\n/).filter(l=>l.trim());
+    if(!lines.length) return;
+    const sep = lines[0].includes("\t")?"\t":",";
+    const hdrs = lines[0].split(sep).map(h=>h.replace(/^["']|["']$/g,"").trim());
+    const data = lines.slice(1).map(l => {
+      const vals=[]; let cur="",inQ=false;
+      for(const ch of l){if(ch==='"'){inQ=!inQ;continue;}if((ch===","||ch==="\t")&&!inQ){vals.push(cur.trim());cur="";continue;}cur+=ch;}
+      vals.push(cur.trim());
+      const row={}; hdrs.forEach((h,i)=>{row[h]=vals[i]||"";}); return row;
+    }).filter(r=>Object.values(r).some(v=>v));
+
+    window._uploadHeaders = hdrs;
+    window._uploadRows = data;
+
+    // Auto-map
+    const m = {};
+    const lh = hdrs.map(h=>h.toLowerCase());
+    const pats = {firstName:["first","fname"],lastName:["last","lname","surname"],division:["division","div","age"],team:["team"],birthdate:["birth","dob","birthday"]};
+    for(const[f,ps] of Object.entries(pats)){const i=lh.findIndex(h=>ps.some(p=>h.includes(p)));if(i>=0)m[f]=hdrs[i];}
+    window._uploadMap = m;
+    renderUploadPreview();
+  };
+  reader.readAsText(file);
+}
+
+function renderUploadPreview() {
+  const hdrs = window._uploadHeaders, rows = window._uploadRows, m = window._uploadMap;
+  const prev = document.getElementById("uploadPreview"); if(!prev) return;
+  const fields = ["firstName","lastName","division","team","birthdate"];
+  let html = `<div style="font-size:12px;color:var(--dim);margin-bottom:8px">${rows.length} rows found — map columns:</div>`;
+  for(const f of fields) {
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="width:90px;font-size:12px;color:var(--muted)">${f.replace(/([A-Z])/g," $1")}</span>
+      <select onchange="window._uploadMap.${f}=this.value" style="flex:1">
+        <option value="">— skip —</option>`;
+    for(const h of hdrs) html += `<option value="${esc(h)}" ${m[f]===h?"selected":""}>${esc(h)}</option>`;
+    html += `</select></div>`;
+  }
+  html += `<button class="btn btn-p" onclick="doCSVImport()" style="margin-top:10px">Import ${rows.length} Players</button>`;
+  prev.innerHTML = html;
+}
+
+window.doCSVImport = function() {
+  const m = window._uploadMap, rows = window._uploadRows;
+  if(!m.firstName||!m.lastName) return flash("Map First and Last Name");
+  let count = 0;
+  for(const row of rows) {
+    const fn=row[m.firstName]?.trim(), ln=row[m.lastName]?.trim();
+    if(!fn||!ln) continue;
+    if(state.db.players.find(p=>p.firstName.toLowerCase()===fn.toLowerCase()&&p.lastName.toLowerCase()===ln.toLowerCase()&&(!m.division||p.division===(row[m.division]?.trim()||"")))) continue;
+    state.db.players.push({id:genId(),firstName:fn,lastName:ln,division:row[m.division]?.trim()||"",team:row[m.team]?.trim()||"",birthdate:row[m.birthdate]?.trim()||"",customData:{},createdAt:nowISO()});
+    count++;
+  }
+  log("BULK_IMPORT",`Imported ${count} players from CSV`);
+  save(); closeModal(); flash(`Imported ${count} players`);
+};
+
+function renderRateModal(data, isEdit) {
+  const pid = isEdit ? data.playerId : data;
+  const p = state.db.players.find(x=>x.id===pid);
+  if(!p) return modalWrap("Error","Player not found");
+  const existing = isEdit ? state.db.ratings.find(r=>r.id===data.id) : null;
+  const ov = existing ? existing.overall : 3;
+  const rb = existing ? existing.ratedBy : "";
+  const notes = existing ? (existing.notes||"") : "";
+  const skills = existing ? {...existing.skills} : {};
+
+  let body = `<div style="font-size:12px;color:var(--dim);margin-bottom:12px">${esc(p.division)}${p.team?" · "+esc(p.team):""}</div>`;
+
+  // Overall
+  body += `<div class="form-group"><div class="form-label">Overall Rating (1 = Best → 5 = Needs Most Work)</div>
+    <div class="rating-picker" id="overallPicker">`;
+  for(let n=1;n<=5;n++) body += `<button class="rating-pick-btn ${ov===n?"sel":""}" onclick="pickOverall(${n})" data-val="${n}">${n}</button>`;
+  body += `</div><div id="overallLabel" style="font-size:11px;color:var(--dim);margin-top:2px">${RATING_LABELS[ov]||""}</div></div>`;
+
+  // Skill ratings
+  body += `<div class="sub-section">Skill Ratings (optional, same 1–5 scale)</div>`;
+  for(const skill of state.db.customFields) {
+    const sv = skills[skill]||0;
+    body += `<div class="skill-row"><span class="skill-label">${esc(skill)}</span><div class="skill-btns">`;
+    for(let n=0;n<=5;n++) body += `<button class="skill-btn ${sv===n?(n===0?"sel-zero":"sel"):""}" onclick="pickSkill('${esc(skill)}',${n})" data-skill="${esc(skill)}" data-val="${n}">${n===0?"—":n}</button>`;
+    body += `</div></div>`;
+  }
+
+  body += `<div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+    <input id="ratedByInput" placeholder="Rated by (your name)" value="${esc(rb)}">
+    <textarea id="rateNotes" placeholder="Notes (optional)">${esc(notes)}</textarea>
+    <button class="btn btn-p" onclick="saveRating('${pid}','${existing?existing.id:""}')">${isEdit?"Save Changes":"Submit Rating"}</button>
+  </div>`;
+
+  return modalWrap(`${isEdit?"Edit":"Rate"}: ${esc(p.firstName)} ${esc(p.lastName)}`, body);
+}
+
+// Rating modal state
+window._rateOverall = 3;
+window._rateSkills = {};
+
+window.pickOverall = function(n) {
+  window._rateOverall = n;
+  document.querySelectorAll("#overallPicker .rating-pick-btn").forEach(b => b.classList.toggle("sel", parseInt(b.dataset.val)===n));
+  const lbl = document.getElementById("overallLabel"); if(lbl) lbl.textContent = RATING_LABELS[n]||"";
+};
+
+window.pickSkill = function(skill, n) {
+  window._rateSkills[skill] = n;
+  document.querySelectorAll(`.skill-btn[data-skill="${skill}"]`).forEach(b => {
+    const v = parseInt(b.dataset.val);
+    b.classList.remove("sel","sel-zero");
+    if(v===n) b.classList.add(n===0?"sel-zero":"sel");
+  });
+};
+
+window.saveRating = function(pid, editId) {
+  const rb = document.getElementById("ratedByInput")?.value?.trim();
+  if(!rb) return flash("Enter who is rating");
+  const notes = document.getElementById("rateNotes")?.value?.trim()||"";
+  const overall = window._rateOverall;
+  const skills = {...window._rateSkills};
+  const p = state.db.players.find(x=>x.id===pid);
+  if(editId) {
+    const i = state.db.ratings.findIndex(r=>r.id===editId);
+    if(i>=0) { state.db.ratings[i] = {...state.db.ratings[i], overall, ratedBy:rb, notes, skills, editedAt:nowISO()}; log("EDIT_RATING",`Edited rating for ${p.firstName} ${p.lastName} by ${rb}`); }
+  } else {
+    state.db.ratings.push({id:genId(),playerId:pid,overall,ratedBy:rb,notes,skills,ts:nowISO()});
+    log("ADD_RATING",`Rated ${p.firstName} ${p.lastName} (${overall}) by ${rb}`);
+  }
+  save(); closeModal(); flash(editId?"Rating updated":"Rating saved");
+};
+
+function renderDetailModal(pid) {
+  const p = state.db.players.find(x=>x.id===pid);
+  if(!p) return modalWrap("Error","Player not found");
+  const ratings = state.db.ratings.filter(r=>r.playerId===pid).sort((a,b)=>b.ts.localeCompare(a.ts));
+  const avg = getAvg(pid);
+
+  let body = `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--muted)"><div>${esc(p.division)}${p.team?" · "+esc(p.team):""}</div>${p.birthdate?`<div style="font-size:11px;margin-top:2px">DOB: ${esc(p.birthdate)}</div>`:""}`;
+  // Show custom player data
+  const cf = p.customData||{};
+  for(const[k,v] of Object.entries(cf)) { if(v) body += `<div style="font-size:11px;margin-top:1px">${esc(k)}: ${esc(v)}</div>`; }
+  body += `</div>`;
+  if(avg) body += `<div style="margin-left:auto;text-align:center"><div style="font-size:28px;font-weight:800;color:var(--accent)">${avg}</div><div style="font-size:10px;color:var(--dim)">avg of ${ratings.length}</div></div>`;
+  body += `</div>`;
+
+  body += `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn btn-p" onclick="closeModal();setTimeout(()=>openModal('rate','${pid}'),50)" style="font-size:12px">+ Add Rating</button>
+    <button class="btn btn-s" onclick="closeModal();setTimeout(()=>openModal('addPlayer','${pid}'),50)" style="font-size:12px">Edit Info</button>
+    <button class="btn btn-d" onclick="deletePlayer('${pid}')" style="font-size:12px">Delete Player</button>
+  </div>`;
+
+  body += `<div style="font-size:13px;font-weight:700;margin-bottom:8px">Rating History (${ratings.length})</div>`;
+  if(!ratings.length) body += `<div style="font-size:12px;color:var(--dim)">No ratings yet</div>`;
+  for(const r of ratings) {
+    body += `<div class="rating-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${ratingDot(r.overall, 26)}
+          <div><div style="font-size:12px">${RATING_LABELS[r.overall]||""}</div>
+            <div style="font-size:10px;color:var(--dim)">by ${esc(r.ratedBy)} · ${fmtDate(r.ts)}</div>
+            ${r.editedAt?`<div style="font-size:10px;color:var(--warn)">edited ${fmtDate(r.editedAt)}</div>`:""}
+          </div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-g" onclick="closeModal();setTimeout(()=>openEditRating('${r.id}'),50)">Edit</button>
+          <button class="btn btn-g" style="color:var(--danger)" onclick="deleteRating('${r.id}','${pid}')">Del</button>
+        </div>
+      </div>`;
+    for(const s of state.db.customFields) {
+      if(r.skills?.[s]) {
+        const c = RATING_COLORS[r.skills[s]]||"#888";
+        const pct = ((6-r.skills[s])/5)*100;
+        body += `<div class="skill-bar"><span class="skill-bar-label">${esc(s)}</span><div class="skill-bar-track"><div class="skill-bar-fill" style="width:${pct}%;background:${c}"></div></div><span style="width:16px;text-align:right;color:${c};font-weight:600;font-size:11px">${r.skills[s]}</span></div>`;
+      }
+    }
+    if(r.notes) body += `<div style="font-size:11px;color:var(--muted);margin-top:6px;font-style:italic">${esc(r.notes)}</div>`;
+    body += `</div>`;
+  }
+  return modalWrap(`${esc(p.firstName)} ${esc(p.lastName)}`, body, true);
+}
+
+function renderExportModal() {
+  const teams = getTeams(), raters = getRaters();
+  let body = `<div style="display:flex;flex-direction:column;gap:10px">
+    ${selectHTML("expDiv","",state.db.divisions,"All Divisions")}
+    ${selectHTML("expTeam","",teams,"All Teams")}
+    ${selectHTML("expRater","",raters,"All Raters")}
+    <button class="btn btn-p" onclick="doExport()">Download CSV</button>
+  </div>`;
+  return modalWrap("Export Ratings", body);
+}
+
+function renderShareModal() {
+  let body = `<p style="font-size:12px;color:var(--muted)">Generate a link with your roster so coaches can view the player list. They'd submit ratings which you import back.</p>
+    <button class="btn btn-p" onclick="genShareLink()" style="margin-top:8px">Generate Link</button>
+    <div id="shareResult" style="margin-top:10px"></div>`;
+  return modalWrap("Share Rating Link", body);
+}
+
+function renderSettingsModal() {
+  const db = state.db;
+  let body = `<div class="sub-section" style="margin-top:0">Divisions</div>
+    <p style="font-size:11px;color:var(--dim);margin-bottom:8px">Add or remove divisions. Players in removed divisions keep their data.</p>
+    <div id="divChips" style="margin-bottom:8px">`;
+  for(const d of db.divisions) body += `<span class="chip active">${esc(d)} <span class="chip-x" onclick="removeDivision('${esc(d)}')">✕</span></span>`;
+  body += `</div>
+    <div style="display:flex;gap:6px;margin-bottom:20px">
+      <input id="newDivInput" placeholder="New division name..." style="flex:1">
+      <button class="btn btn-p" onclick="addDivision()" style="white-space:nowrap">+ Add</button>
+    </div>`;
+
+  body += `<div class="sub-section">Skill / Rating Fields</div>
+    <p style="font-size:11px;color:var(--dim);margin-bottom:8px">These appear as sub-ratings when evaluating a player (1–5 scale each).</p>
+    <div id="skillChips" style="margin-bottom:8px">`;
+  for(const s of db.customFields) body += `<span class="chip active">${esc(s)} <span class="chip-x" onclick="removeSkill('${esc(s)}')">✕</span></span>`;
+  body += `</div>
+    <div style="display:flex;gap:6px;margin-bottom:20px">
+      <input id="newSkillInput" placeholder="New skill field..." style="flex:1">
+      <button class="btn btn-p" onclick="addSkill()" style="white-space:nowrap">+ Add</button>
+    </div>`;
+
+  body += `<div class="sub-section">Custom Player Fields</div>
+    <p style="font-size:11px;color:var(--dim);margin-bottom:8px">Extra fields that appear on each player's profile (e.g. Jersey Number, Parent Email).</p>
+    <div id="pfChips" style="margin-bottom:8px">`;
+  for(const f of (db.playerFields||[])) body += `<span class="chip active">${esc(f)} <span class="chip-x" onclick="removePlayerField('${esc(f)}')">✕</span></span>`;
+  body += `</div>
+    <div style="display:flex;gap:6px;margin-bottom:24px">
+      <input id="newPFInput" placeholder="New player field..." style="flex:1">
+      <button class="btn btn-p" onclick="addPlayerField()" style="white-space:nowrap">+ Add</button>
+    </div>`;
+
+  body += `<div style="border-top:1px solid var(--border);padding-top:16px">
+    <button class="btn btn-d" onclick="if(confirm('Delete ALL data? This cannot be undone.')){state.db={players:[],ratings:[],changelog:[],divisions:[...DEFAULT_DIVISIONS],customFields:[...DEFAULT_SKILLS],playerFields:[]};save();closeModal();flash('All data cleared');}">Reset All Data</button>
+  </div>`;
+
+  return modalWrap("Settings", body, true);
+}
+
+// ── Actions ──
+
+window.switchTab = function(t) { state.tab = t; render(); };
+window.openModal = function(type, data) {
+  state.modal = {type, data};
+  // Reset rate state
+  if(type==="rate") {
+    window._rateOverall = 3;
+    window._rateSkills = {};
+  }
+  if(type==="editRating") {
+    const r = state.db.ratings.find(x=>x.id===data.id);
+    if(r) { window._rateOverall = r.overall; window._rateSkills = {...(r.skills||{})}; }
+  }
+  render();
+};
+window.openEditRating = function(rid) {
+  const r = state.db.ratings.find(x=>x.id===rid);
+  if(r) openModal("editRating", r);
+};
+window.closeModal = function() { state.modal = null; render(); };
+
+window.savePlayer = function(editId) {
+  const fn = document.getElementById("apFirst")?.value?.trim();
+  const ln = document.getElementById("apLast")?.value?.trim();
+  if(!fn||!ln) return flash("Name required");
+  const div = document.getElementById("apDiv")?.value||"";
+  const team = document.getElementById("apTeam")?.value?.trim()||"";
+  const bd = document.getElementById("apDOB")?.value||"";
+  // Custom fields
+  const customData = {};
+  document.querySelectorAll(".custom-pf").forEach(el => { customData[el.dataset.field] = el.value.trim(); });
+
+  if(editId) {
+    const i = state.db.players.findIndex(p=>p.id===editId);
+    if(i>=0) { Object.assign(state.db.players[i], {firstName:fn,lastName:ln,division:div,team,birthdate:bd,customData}); log("EDIT_PLAYER",`Edited ${fn} ${ln}`); }
+  } else {
+    state.db.players.push({id:genId(),firstName:fn,lastName:ln,division:div,team,birthdate:bd,customData,createdAt:nowISO()});
+    log("ADD_PLAYER",`Added ${fn} ${ln} (${div})`);
+  }
+  save(); closeModal(); flash(editId?"Player updated":"Player added");
+};
+
+window.deletePlayer = function(pid) {
+  if(!confirm("Delete this player and all their ratings?")) return;
+  const p = state.db.players.find(x=>x.id===pid);
+  const rc = state.db.ratings.filter(r=>r.playerId===pid).length;
+  state.db.players = state.db.players.filter(x=>x.id!==pid);
+  state.db.ratings = state.db.ratings.filter(r=>r.playerId!==pid);
+  log("DELETE_PLAYER",`Deleted ${p?p.firstName+" "+p.lastName:"?"} and ${rc} ratings`);
+  save(); closeModal(); flash("Player deleted");
+};
+
+window.deleteRating = function(rid, pid) {
+  const r = state.db.ratings.find(x=>x.id===rid);
+  const p = state.db.players.find(x=>x.id===pid);
+  state.db.ratings = state.db.ratings.filter(x=>x.id!==rid);
+  log("DELETE_RATING",`Deleted rating for ${p?p.firstName+" "+p.lastName:"?"} by ${r?r.ratedBy:"?"}`);
+  save();
+  // Re-render detail
+  openModal("detail", pid);
+  flash("Rating deleted");
+};
+
+window.doExport = function() {
+  let ps = state.db.players;
+  const ed = document.getElementById("expDiv")?.value;
+  const et = document.getElementById("expTeam")?.value;
+  const er = document.getElementById("expRater")?.value;
+  if(ed) ps = ps.filter(p=>p.division===ed);
+  if(et) ps = ps.filter(p=>p.team===et);
+  let rs = state.db.ratings;
+  if(er) rs = rs.filter(r=>r.ratedBy===er);
+  const pf = state.db.playerFields||[];
+  const header = ["First Name","Last Name","Division","Team","DOB",...pf,"Overall","Rated By","Date",...state.db.customFields,"Notes","Avg Overall","# Ratings"];
+  const rows = [header];
+  for(const p of ps) {
+    const pr = rs.filter(r=>r.playerId===p.id);
+    const avg = pr.length ? (pr.reduce((s,r)=>s+(r.overall||0),0)/pr.length).toFixed(1) : "";
+    const cd = p.customData||{};
+    if(!pr.length) { rows.push([p.firstName,p.lastName,p.division,p.team||"",p.birthdate||"",...pf.map(f=>cd[f]||""),"","","",...state.db.customFields.map(()=>""),"",avg,"0"]); }
+    else { for(const r of pr) { rows.push([p.firstName,p.lastName,p.division,p.team||"",p.birthdate||"",...pf.map(f=>cd[f]||""),r.overall,r.ratedBy,fmtDate(r.ts),...state.db.customFields.map(s=>r.skills?.[s]||""),r.notes||"",avg,pr.length.toString()]); } }
+  }
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv],{type:"text/csv"});
+  const a = document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=`EBSC_Ratings_${ed||"All"}_${new Date().toISOString().split("T")[0]}.csv`; a.click();
+  flash("Exported!");
+};
+
+window.genShareLink = function() {
+  const data = {app:"EBSC",players:state.db.players.map(p=>({id:p.id,firstName:p.firstName,lastName:p.lastName,division:p.division,team:p.team}))};
+  try {
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    const url = `${location.origin}${location.pathname}?rate=${encoded}`;
+    const el = document.getElementById("shareResult");
+    if(el) el.innerHTML = `<textarea readonly style="height:70px;font-size:11px;margin-bottom:8px">${esc(url)}</textarea><button class="btn btn-p" onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(()=>flash('Copied!'))">Copy Link</button>`;
+  } catch { flash("Roster may be too large for URL"); }
+};
+
+// Division management
+window.addDivision = function() {
+  const el = document.getElementById("newDivInput"); if(!el) return;
+  const v = el.value.trim(); if(!v) return flash("Enter a division name");
+  if(state.db.divisions.includes(v)) return flash("Already exists");
+  state.db.divisions.push(v);
+  log("ADD_DIVISION",`Added division: ${v}`);
+  save(); render(); flash(`Division "${v}" added`);
+};
+window.removeDivision = function(d) {
+  state.db.divisions = state.db.divisions.filter(x=>x!==d);
+  log("REMOVE_DIVISION",`Removed division: ${d}`);
+  save(); render(); flash(`Division "${d}" removed`);
+};
+
+// Skill management
+window.addSkill = function() {
+  const el = document.getElementById("newSkillInput"); if(!el) return;
+  const v = el.value.trim(); if(!v) return flash("Enter a skill name");
+  if(state.db.customFields.includes(v)) return flash("Already exists");
+  state.db.customFields.push(v);
+  log("ADD_SKILL",`Added skill field: ${v}`);
+  save(); render(); flash(`Skill "${v}" added`);
+};
+window.removeSkill = function(s) {
+  state.db.customFields = state.db.customFields.filter(x=>x!==s);
+  log("REMOVE_SKILL",`Removed skill field: ${s}`);
+  save(); render(); flash(`Skill "${s}" removed`);
+};
+
+// Player field management
+window.addPlayerField = function() {
+  const el = document.getElementById("newPFInput"); if(!el) return;
+  const v = el.value.trim(); if(!v) return flash("Enter a field name");
+  if(!state.db.playerFields) state.db.playerFields = [];
+  if(state.db.playerFields.includes(v)) return flash("Already exists");
+  state.db.playerFields.push(v);
+  log("ADD_PLAYER_FIELD",`Added player field: ${v}`);
+  save(); render(); flash(`Field "${v}" added`);
+};
+window.removePlayerField = function(f) {
+  state.db.playerFields = (state.db.playerFields||[]).filter(x=>x!==f);
+  log("REMOVE_PLAYER_FIELD",`Removed player field: ${f}`);
+  save(); render(); flash(`Field "${f}" removed`);
+};
+
+// ── Init ──
+state.db = loadDB();
+// Ensure new fields exist on legacy data
+if(!state.db.divisions) state.db.divisions = [...DEFAULT_DIVISIONS];
+if(!state.db.customFields) state.db.customFields = [...DEFAULT_SKILLS];
+if(!state.db.playerFields) state.db.playerFields = [];
+render();
+
+// Register service worker for PWA
+if("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
