@@ -1,0 +1,11 @@
+{
+  "name": "ebsc-ratings-saas",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:isolation": "node test/tenant-isolation.test.mjs"
+  },
+  "devDependencies": {
+    "pg": "^8.22.0"
+  }
+}
