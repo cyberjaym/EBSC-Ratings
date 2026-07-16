@@ -1,10 +1,9 @@
-import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { currentSubdomain, getTenantBySubdomain, getMembershipRole, isPlatformAdmin, PLATFORM_SUBDOMAIN } from "@/lib/tenant";
 import { logout } from "../login/actions";
 import { addPlayer } from "./actions";
-
-const PLATFORM_SUBDOMAIN = "admin";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -13,21 +12,11 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const hdrs = await headers();
-  const subdomain = hdrs.get("x-tenant-subdomain") || "";
-
-  // Relies on RLS, not application logic, to decide what "platform admin"
-  // sees: platform_admins_select only returns a row at all if the caller
-  // actually is one (see db/02_policies.sql).
-  const { data: selfAsPlatformAdmin } = await supabase
-    .from("platform_admins")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const isPlatformAdmin = !!selfAsPlatformAdmin;
+  const subdomain = await currentSubdomain();
+  const platformAdmin = await isPlatformAdmin(user.id);
 
   if (subdomain === PLATFORM_SUBDOMAIN) {
-    if (!isPlatformAdmin) {
+    if (!platformAdmin) {
       return <Shell title="Platform Admin" email={user.email}>You are not a platform admin.</Shell>;
     }
     const { data: tenants } = await supabase.from("tenants").select("id, name, subdomain").order("name");
@@ -53,32 +42,21 @@ export default async function DashboardPage() {
     );
   }
 
-  // tenants_select RLS (is_platform_admin() or is_member(id)) means this
-  // returns null both when the subdomain doesn't exist AND when it exists
-  // but this user isn't a member — the two cases are indistinguishable by
-  // design, so no subdomain enumeration is possible.
-  const { data: tenant } = await supabase
-    .from("tenants")
-    .select("id, name")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-
+  // tenants_select RLS means this returns null both when the subdomain
+  // doesn't exist AND when this specific query happened to race some other
+  // failure — but since tenants_select_public makes the row itself always
+  // readable now, "not found" here really does mean "no such league."
+  const tenant = await getTenantBySubdomain(subdomain);
   if (!tenant) {
     return (
       <Shell title="EBSC Ratings" email={user.email}>
-        No league found at this address, or you don&apos;t have access to it.
+        No league found at this address.
       </Shell>
     );
   }
 
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("role")
-    .eq("tenant_id", tenant.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!membership && !isPlatformAdmin) {
+  const membershipRole = await getMembershipRole(tenant.id, user.id);
+  if (!membershipRole && !platformAdmin) {
     return (
       <Shell title={tenant.name} email={user.email}>
         You don&apos;t have a role in this league.
@@ -86,7 +64,7 @@ export default async function DashboardPage() {
     );
   }
 
-  const role = isPlatformAdmin ? "platform_admin" : membership!.role;
+  const role = platformAdmin ? "platform_admin" : membershipRole!;
 
   // Every one of these three queries is scoped entirely by RLS — this page
   // issues the same players/select for every role and simply gets back a
@@ -98,6 +76,12 @@ export default async function DashboardPage() {
 
   return (
     <Shell title={tenant.name} email={user.email} role={role}>
+      {role === "league_admin" && (
+        <Link href="/dashboard/settings" style={{ fontSize: 12 }}>
+          League settings &amp; branding
+        </Link>
+      )}
+
       <h2 style={{ fontSize: 15, marginTop: 24 }}>Players ({(players || []).length})</h2>
       <ul>
         {(players || []).map((p) => (
@@ -112,7 +96,7 @@ export default async function DashboardPage() {
         <form action={addPlayer.bind(null, tenant.id)} style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <input name="firstName" placeholder="First name" required style={{ padding: 6 }} />
           <input name="lastName" placeholder="Last name" required style={{ padding: 6 }} />
-          <button type="submit" style={{ padding: "6px 12px", cursor: "pointer" }}>
+          <button type="submit" style={{ padding: "6px 12px", cursor: "pointer", background: "var(--accent)", border: "none", borderRadius: 6 }}>
             Add player
           </button>
         </form>
@@ -136,8 +120,8 @@ function Shell({
     <main style={{ maxWidth: 560, margin: "40px auto", padding: "0 16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h1 style={{ fontSize: 18, margin: 0 }}>{title}</h1>
-          <div style={{ fontSize: 12, color: "#666" }}>
+          <h1 style={{ fontSize: 18, margin: 0, color: "var(--accent)" }}>{title}</h1>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>
             {email}
             {role ? ` · ${role}` : ""}
           </div>

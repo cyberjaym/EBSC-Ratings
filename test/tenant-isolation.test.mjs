@@ -136,6 +136,16 @@ async function main() {
     // deliberately no request.jwt.claims set — auth.uid() is null
     const r = await client.query("select id from players");
     check("No JWT/claims set => auth.uid() is null => 0 rows visible anywhere", r.rows.length === 0, `saw ${r.rows.length} rows`);
+
+    // Tenant branding (name/theme/subdomain) is the one thing that's
+    // deliberately public — a league's login page needs to show its own
+    // name/logo/colors before anyone signs in. Confirm that's visible with
+    // no auth at all, while everything else stays locked (checked above).
+    const rTenants = await client.query("select id, subdomain from tenants order by subdomain");
+    check("Public branding: tenants readable with no auth at all", rTenants.rows.length === 2 &&
+      rTenants.rows.some(r => r.subdomain === "tenanta") && rTenants.rows.some(r => r.subdomain === "tenantb"),
+      `saw ${JSON.stringify(rTenants.rows)}`);
+
     await client.query("rollback");
   }
 
