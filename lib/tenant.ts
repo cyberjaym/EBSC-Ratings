@@ -17,7 +17,7 @@ export async function getTenantBySubdomain(subdomain: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("tenants")
-    .select("id, name, subdomain, theme")
+    .select("id, name, subdomain, theme, settings")
     .eq("subdomain", subdomain)
     .maybeSingle();
   return data;

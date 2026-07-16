@@ -74,6 +74,16 @@ export default async function DashboardPage() {
     .select("id, first_name, last_name, division")
     .order("last_name");
 
+  // Template-driven, not hardcoded: whatever divisions/custom fields this
+  // tenant has configured under /dashboard/settings is what shows up here.
+  const [{ data: divisions }, { data: playerFields }] =
+    role === "league_admin"
+      ? await Promise.all([
+          supabase.from("divisions").select("name").eq("tenant_id", tenant.id).order("name"),
+          supabase.from("player_fields").select("name").eq("tenant_id", tenant.id).order("name"),
+        ])
+      : [{ data: [] }, { data: [] }];
+
   return (
     <Shell title={tenant.name} email={user.email} role={role}>
       {role === "league_admin" && (
@@ -93,10 +103,29 @@ export default async function DashboardPage() {
       </ul>
 
       {role === "league_admin" && (
-        <form action={addPlayer.bind(null, tenant.id)} style={{ display: "flex", gap: 8, marginTop: 16 }}>
+        <form
+          action={addPlayer.bind(null, tenant.id)}
+          style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16, maxWidth: 320 }}
+        >
           <input name="firstName" placeholder="First name" required style={{ padding: 6 }} />
           <input name="lastName" placeholder="Last name" required style={{ padding: 6 }} />
-          <button type="submit" style={{ padding: "6px 12px", cursor: "pointer", background: "var(--accent)", border: "none", borderRadius: 6 }}>
+          {(divisions || []).length > 0 && (
+            <select name="division" defaultValue="" style={{ padding: 6 }}>
+              <option value="">No division</option>
+              {(divisions || []).map((d) => (
+                <option key={d.name} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {(playerFields || []).map((f) => (
+            <input key={f.name} name={`custom_${f.name}`} placeholder={f.name} style={{ padding: 6 }} />
+          ))}
+          <button
+            type="submit"
+            style={{ padding: "6px 12px", cursor: "pointer", background: "var(--accent)", border: "none", borderRadius: 6 }}
+          >
             Add player
           </button>
         </form>

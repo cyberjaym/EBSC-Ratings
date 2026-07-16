@@ -86,6 +86,12 @@ async function main() {
     const r5 = await client.query(`delete from teams where tenant_id = '${TENANT_B}' returning id`);
     check("Admin A DELETE against tenant B team affects 0 rows", r5.rowCount === 0);
 
+    // Theming and templates both write straight to the tenants row itself
+    // (name, theme, settings) — confirm that write path is exactly as
+    // tenant-scoped as every other table, not just tested by exclusion.
+    const r5b = await client.query(`update tenants set name = 'HACKED', settings = '{"policyDoc":"pwned"}'::jsonb where id = '${TENANT_B}' returning id`);
+    check("Admin A UPDATE against tenant B's own row (name/settings) affects 0 rows", r5b.rowCount === 0);
+
     const insertBlocked = await expectRejected(client,
       `insert into ratings (tenant_id, player_id, overall, rated_by, notes) values ('${TENANT_B}', '${PLAYER_B}', 1, '${ADMIN_A}', 'attempted cross-tenant write')`);
     check("Admin A INSERT rating into tenant B is rejected by RLS", insertBlocked);
