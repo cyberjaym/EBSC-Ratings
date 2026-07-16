@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentSubdomain, getTenantBySubdomain, getMembershipRole, isPlatformAdmin } from "@/lib/tenant";
 import { getLatestDraftSession } from "@/lib/draft-data";
+import styles from "./draft.module.css";
 
 export default async function DraftIndexPage() {
   const supabase = await createClient();
@@ -23,31 +24,34 @@ export default async function DraftIndexPage() {
   );
 
   return (
-    <main style={{ maxWidth: 480, margin: "40px auto", padding: "0 16px" }}>
-      <Link href="/dashboard" style={{ fontSize: 12 }}>
-        &larr; Back to dashboard
-      </Link>
-      <h1 style={{ fontSize: 18, color: "var(--accent)" }}>Draft</h1>
-      {rows.length === 0 && (
-        <p style={{ fontSize: 13, opacity: 0.7 }}>
-          No divisions configured yet — add some under{" "}
-          <Link href="/dashboard/settings">League settings &amp; branding</Link> first.
-        </p>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-        {rows.map(({ name, session }) => (
-          <Link
-            key={name}
-            href={`/dashboard/draft/${encodeURIComponent(name)}`}
-            style={{ display: "flex", justifyContent: "space-between", background: "#1118", padding: "10px 14px", borderRadius: 8, textDecoration: "none", color: "inherit" }}
-          >
-            <span>{name}</span>
-            <span style={{ fontSize: 11, opacity: 0.6 }}>
-              {!session ? "Not started" : session.status === "setup" ? "In setup" : session.status === "draft" ? "Draft in progress" : "Finalized"}
-            </span>
-          </Link>
-        ))}
+    <div className={styles.theme}>
+      <div style={{ maxWidth: 480, margin: "0 auto" }}>
+        <Link href="/dashboard" className={styles.backLink}>
+          &larr; Back to dashboard
+        </Link>
+        <h1 className={styles.heading} style={{ fontSize: 26, margin: "4px 0 16px" }}>
+          Draft
+        </h1>
+        {rows.length === 0 && (
+          <p className={styles.muted}>
+            No divisions configured yet — add some under{" "}
+            <Link href="/dashboard/settings" style={{ color: "var(--gold)" }}>
+              League settings &amp; branding
+            </Link>{" "}
+            first.
+          </p>
+        )}
+        <div className={styles.stack}>
+          {rows.map(({ name, session }) => (
+            <Link key={name} href={`/dashboard/draft/${encodeURIComponent(name)}`} className={styles.card} style={{ display: "flex", justifyContent: "space-between", textDecoration: "none", color: "inherit" }}>
+              <span style={{ fontSize: 14 }}>{name}</span>
+              <span className={`${styles.badge} ${session?.status === "done" ? styles.badgeGreen : styles.badgeGold}`}>
+                {!session ? "Not started" : session.status === "setup" ? "In setup" : session.status === "draft" ? "In progress" : "Finalized"}
+              </span>
+            </Link>
+          ))}
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

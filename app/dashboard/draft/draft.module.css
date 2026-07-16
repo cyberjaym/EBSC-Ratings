@@ -1,0 +1,81 @@
+/* Scoped via CSS Modules — none of this leaks outside the draft section,
+   and the --gold/--pitch/etc custom properties are set on .theme, so they
+   only cascade to draft-page descendants rather than colliding with the
+   tenant's own --accent/--bg branding variables used elsewhere. */
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap");
+
+.theme {
+  --pitch: #1a472a; --grass: #2d6a4f; --line: #52b788;
+  --gold: #f4c430; --white: #f8f9fa;
+  --card: #0d1f17; --card2: #122a1e; --card3: #1a3d2b;
+  --text: #e8f5e9; --muted: #7fb99a;
+  --danger: #e63946; --blue: #4895ef; --purple: #9b59b6;
+  --radius: 12px; --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  background: var(--pitch);
+  color: var(--text);
+  font-family: "Inter", sans-serif;
+  min-height: 100vh;
+  margin: -40px -16px;
+  padding: 24px 32px;
+}
+
+.heading { font-family: "Bebas Neue", sans-serif; letter-spacing: 2px; color: var(--gold); }
+.mono { font-family: "DM Mono", monospace; }
+
+.backLink { color: var(--muted); font-size: 12px; text-decoration: none; }
+.backLink:hover { color: var(--gold); }
+
+.card { background: var(--card); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+.cardTitle { font-family: "Bebas Neue", sans-serif; font-size: 16px; letter-spacing: 1.5px; color: var(--gold); margin-bottom: 10px; }
+
+.btn { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.15s; }
+.btnGold { background: var(--gold); color: #0a1a0f; }
+.btnGold:hover { background: #f0c000; transform: translateY(-1px); }
+.btnOutline { background: transparent; border: 1.5px solid rgba(255, 255, 255, 0.2); color: var(--text); }
+.btnOutline:hover { border-color: var(--gold); color: var(--gold); }
+.btnDanger { background: rgba(230, 57, 70, 0.15); border: 1.5px solid var(--danger); color: var(--danger); }
+.btnPurple { background: rgba(155, 89, 182, 0.15); border: 1.5px solid var(--purple); color: #c39bd3; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.input, .select { background: var(--card2); border: 1.5px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 13px; width: 100%; outline: none; }
+.input:focus, .select:focus { border-color: var(--gold); }
+
+.clockCard { background: linear-gradient(135deg, var(--card), var(--card3)); border: 2px solid var(--gold); border-radius: var(--radius); padding: 18px; text-align: center; box-shadow: 0 0 30px rgba(244, 196, 48, 0.15); }
+.clockLabel { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; }
+.clockTeam { font-family: "Bebas Neue", sans-serif; font-size: 28px; color: var(--gold); letter-spacing: 2px; }
+.clockMeta { font-size: 12px; color: var(--muted); }
+
+.playerRow { background: var(--card2); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 7px; padding: 9px 12px; display: flex; align-items: center; gap: 9px; cursor: pointer; transition: all 0.15s; }
+.playerRow:hover { background: var(--card3); border-color: var(--gold); }
+.playerRowSelected { background: rgba(244, 196, 48, 0.12); border-color: var(--gold); }
+.playerRank { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted); width: 24px; flex-shrink: 0; text-align: center; }
+.playerName { font-weight: 600; font-size: 13px; }
+.playerMeta { font-size: 11px; color: var(--muted); }
+.ratingBadge { font-size: 12px; font-weight: 800; color: var(--gold); background: rgba(244, 196, 48, 0.18); padding: 2px 8px; border-radius: 5px; white-space: nowrap; }
+
+.teamRow { display: flex; align-items: center; gap: 8px; background: var(--card2); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06); }
+.teamRow[draggable="true"] { cursor: grab; }
+.teamRowDragging { opacity: 0.5; }
+.teamOrder { width: 24px; height: 24px; border-radius: 50%; background: var(--gold); color: #0a1a0f; font-weight: 700; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+.rosterCard { background: var(--card2); border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06); overflow: hidden; }
+.rosterHeader { padding: 8px 12px; background: linear-gradient(135deg, var(--grass), var(--pitch)); border-bottom: 2px solid var(--gold); }
+.rosterName { font-family: "Bebas Neue", sans-serif; font-size: 14px; letter-spacing: 1.5px; color: var(--gold); }
+.rosterMeta { font-size: 10px; color: var(--muted); }
+.rosterPlayerRow { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-size: 11px; }
+.rosterPlayerRow:last-child { border-bottom: none; }
+
+.badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+.badgeGold { background: rgba(244, 196, 48, 0.2); color: var(--gold); }
+.badgeGreen { background: rgba(82, 183, 136, 0.2); color: var(--line); }
+.badgePurple { background: rgba(155, 89, 182, 0.2); color: #c39bd3; }
+
+.alert { padding: 10px 14px; border-radius: 8px; font-size: 12px; }
+.alertInfo { background: rgba(72, 149, 239, 0.15); border: 1px solid rgba(72, 149, 239, 0.3); color: var(--blue); }
+.alertSuccess { background: rgba(82, 183, 136, 0.15); border: 1px solid rgba(82, 183, 136, 0.3); color: var(--line); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.scroll { max-height: 440px; overflow-y: auto; }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; align-items: center; gap: 8px; }
+.muted { color: var(--muted); font-size: 11px; }

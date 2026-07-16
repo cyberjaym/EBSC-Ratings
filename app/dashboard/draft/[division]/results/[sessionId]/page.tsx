@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentSubdomain, getTenantBySubdomain, getMembershipRole, isPlatformAdmin } from "@/lib/tenant";
 import { getDraftTeams, getSessionPicks } from "@/lib/draft-data";
+import styles from "../../../draft.module.css";
 
 export default async function DraftResultsPage({
   params,
@@ -32,35 +33,41 @@ export default async function DraftResultsPage({
   for (const pk of picks) (byTeam[pk.team_id] ??= []).push(pk);
 
   return (
-    <main style={{ maxWidth: 800, margin: "40px auto", padding: "0 16px" }}>
-      <Link href={`/dashboard/draft/${encodeURIComponent(division)}`} style={{ fontSize: 12 }}>
-        &larr; Back
-      </Link>
-      <h1 style={{ fontSize: 18, color: "var(--accent)" }}>
-        {division} — {new Date(session.created_at).toLocaleDateString()} ({session.status})
-      </h1>
-      <a href={`/dashboard/draft/${encodeURIComponent(division)}/results/${sessionId}/export`} style={{ fontSize: 12 }}>
-        Download CSV
-      </a>
+    <div className={styles.theme}>
+      <div style={{ maxWidth: 800, margin: "0 auto" }}>
+        <Link href={`/dashboard/draft/${encodeURIComponent(division)}`} className={styles.backLink}>
+          &larr; Back
+        </Link>
+        <h1 className={styles.heading} style={{ fontSize: 24, margin: "4px 0 4px" }}>
+          {division} — {new Date(session.created_at).toLocaleDateString()} ({session.status})
+        </h1>
+        <a href={`/dashboard/draft/${encodeURIComponent(division)}/results/${sessionId}/export`} style={{ fontSize: 12, color: "var(--gold)" }}>
+          Download CSV
+        </a>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginTop: 20 }}>
-        {teams.map((t) => {
-          const roster = byTeam[t.id] || [];
-          return (
-            <div key={t.id} style={{ background: "#1118", borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 15, color: "var(--accent)", marginBottom: 6 }}>
-                {t.name} ({roster.length})
-              </div>
-              {roster.map((pk) => (
-                <div key={pk.id} style={{ fontSize: 12, padding: "2px 0" }}>
-                  {pk.type === "pre" ? "⭐" : pk.type === "admin" ? "🛡️" : `R${pk.round}`} {pk.player.first_name} {pk.player.last_name}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginTop: 20 }}>
+          {teams.map((t) => {
+            const roster = byTeam[t.id] || [];
+            return (
+              <div key={t.id} className={styles.rosterCard}>
+                <div className={styles.rosterHeader}>
+                  <div className={styles.rosterName}>{t.name}</div>
+                  <div className={styles.rosterMeta}>{roster.length} players</div>
                 </div>
-              ))}
-              {roster.length === 0 && <div style={{ fontSize: 11, opacity: 0.5 }}>No players</div>}
-            </div>
-          );
-        })}
+                {roster.map((pk) => (
+                  <div key={pk.id} className={styles.rosterPlayerRow}>
+                    <span>{pk.type === "pre" ? "⭐" : pk.type === "admin" ? "🛡️" : `R${pk.round}`}</span>
+                    <span>
+                      {pk.player.first_name} {pk.player.last_name}
+                    </span>
+                  </div>
+                ))}
+                {roster.length === 0 && <div className={styles.muted} style={{ padding: "6px 12px" }}>No players</div>}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

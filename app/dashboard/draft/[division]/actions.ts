@@ -33,15 +33,11 @@ export async function addTeam(tenantId: string, division: string, sessionId: str
   revalidate(division);
 }
 
-export async function moveTeam(tenantId: string, division: string, sessionId: string, teamId: string, direction: "up" | "down") {
-  const { supabase, session } = await requireSession(tenantId, sessionId);
-  const order: string[] = [...(session.team_order || [])];
-  const i = order.indexOf(teamId);
-  if (i < 0) return;
-  const j = direction === "up" ? i - 1 : i + 1;
-  if (j < 0 || j >= order.length) return;
-  [order[i], order[j]] = [order[j], order[i]];
-
+// Backs both drag-and-drop (client computes the full new order on drop)
+// and simple up/down controls (client computes a one-step swap) — either
+// way this just persists whatever order the client already settled on.
+export async function setTeamOrder(tenantId: string, division: string, sessionId: string, order: string[]) {
+  const { supabase } = await requireSession(tenantId, sessionId);
   const { error } = await supabase.from("draft_sessions").update({ team_order: order }).eq("id", sessionId);
   if (error) throw error;
   revalidate(division);
