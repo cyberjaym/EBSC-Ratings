@@ -3,9 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:isolation": "node test/tenant-isolation.test.mjs"
+    "test:isolation": "node test/tenant-isolation.test.mjs",
+    "test:live-isolation": "node test/live-auth-isolation.test.mjs"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.110.6",
+    "dotenv": "^17.4.2",
     "pg": "^8.22.0"
   }
 }
