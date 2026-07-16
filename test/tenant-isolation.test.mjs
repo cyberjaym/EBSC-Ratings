@@ -68,6 +68,10 @@ async function main() {
   const extraPlayer = "30000000-0000-0000-0000-00000000000c";
   await client.query(`insert into players (id, tenant_id, first_name, last_name, division, team_id) values ('${extraPlayer}', '${TENANT_A}', 'Cara', 'Chen', 'U9', '${TEAM_A2}') on conflict (id) do nothing`);
 
+  const DRAFT_SESSION_B = "50000000-0000-0000-0000-00000000000b";
+  const TEAM_B1 = "20000000-0000-0000-0000-00000000000b";
+  await client.query(`insert into draft_sessions (id, tenant_id, division, status) values ('${DRAFT_SESSION_B}', '${TENANT_B}', 'U9', 'draft') on conflict (id) do nothing`);
+
   console.log("\n== Cross-tenant isolation (league_admin) ==");
   {
     await asUser(client, ADMIN_A);
@@ -91,6 +95,13 @@ async function main() {
     // tenant-scoped as every other table, not just tested by exclusion.
     const r5b = await client.query(`update tenants set name = 'HACKED', settings = '{"policyDoc":"pwned"}'::jsonb where id = '${TENANT_B}' returning id`);
     check("Admin A UPDATE against tenant B's own row (name/settings) affects 0 rows", r5b.rowCount === 0);
+
+    const r5c = await client.query(`select id from draft_sessions where tenant_id = '${TENANT_B}'`);
+    check("Admin A cannot read tenant B's draft session", r5c.rows.length === 0);
+
+    const draftPickBlocked = await expectRejected(client,
+      `insert into draft_picks (tenant_id, draft_session_id, player_id, team_id, type) values ('${TENANT_B}', '${DRAFT_SESSION_B}', '${PLAYER_B}', '${TEAM_B1}', 'admin')`);
+    check("Admin A cannot insert a draft pick into tenant B's session", draftPickBlocked);
 
     const insertBlocked = await expectRejected(client,
       `insert into ratings (tenant_id, player_id, overall, rated_by, notes) values ('${TENANT_B}', '${PLAYER_B}', 1, '${ADMIN_A}', 'attempted cross-tenant write')`);

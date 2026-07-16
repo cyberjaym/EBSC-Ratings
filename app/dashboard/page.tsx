@@ -87,9 +87,14 @@ export default async function DashboardPage() {
   return (
     <Shell title={tenant.name} email={user.email} role={role}>
       {role === "league_admin" && (
-        <Link href="/dashboard/settings" style={{ fontSize: 12 }}>
-          League settings &amp; branding
-        </Link>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Link href="/dashboard/settings" style={{ fontSize: 12 }}>
+            League settings &amp; branding
+          </Link>
+          <Link href="/dashboard/draft" style={{ fontSize: 12 }}>
+            Draft
+          </Link>
+        </div>
       )}
 
       <h2 style={{ fontSize: 15, marginTop: 24 }}>Players ({(players || []).length})</h2>
