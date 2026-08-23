@@ -1059,6 +1059,7 @@ function renderDraft(dk){
         <button class="btn btn-gold" onclick="finalize('${dk}')" style="font-size:14px;padding:10px 28px;${isDone?'animation:glow 1s infinite alternate':'opacity:.8'}">✅ Finalize Draft →</button>
       </div>
     </div>
+    ${renderTeamBalance(dk)}
     <div class="draft-layout">
 
       <!-- COL 1: Player Pool -->
@@ -1140,6 +1141,60 @@ function renderClock(dk){
 }
 function fmtTime(s){return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
 
+// ===================== TEAM BALANCE ANALYSIS =====================
+// Ranks teams by the average rating of their drafted players (1=best, 5=weakest).
+// Players with no rating on file (shown as "?", stored as 99) are excluded from
+// a team's average rather than treated as a bad or neutral score, since we don't
+// have ratings for every player and don't want unrated picks to unfairly drag a
+// team's number down (or up). Each team also shows how many of its picks are
+// actually rated, so a "strong" average built on 1 rated player out of 6 reads
+// as the thin sample it is.
+function computeTeamBalance(dk){
+  const d=state.divs[dk];
+  return d.coaches.map((coach,ti)=>{
+    const picks=d.picks.filter(p=>p.teamIdx===ti&&p.player);
+    const rated=picks.filter(pk=>pk.player.rating!==99&&pk.player.rating!==null&&pk.player.rating!==undefined);
+    const avg=rated.length?rated.reduce((s,pk)=>s+Number(pk.player.rating),0)/rated.length:null;
+    return{ti,name:coach.name,total:picks.length,ratedCount:rated.length,avg};
+  });
+}
+function renderTeamBalance(dk){
+  const teams=computeTeamBalance(dk);
+  const ranked=teams.filter(t=>t.avg!==null).sort((a,b)=>a.avg-b.avg);
+  const rankOf={};ranked.forEach((t,i)=>{rankOf[t.ti]=i+1;});
+  const anyPartial=teams.some(t=>t.total>0&&t.ratedCount<t.total);
+
+  const headline=ranked.length?
+    `<span style="color:var(--gold);font-weight:700;">${esc(ranked[0].name)}</span> is currently the strongest roster — avg ★${ranked[0].avg.toFixed(1)} across ${ranked[0].ratedCount} rated pick${ranked[0].ratedCount!==1?'s':''}${ranked.length>1?`, ahead of <span style="color:var(--muted);">${esc(ranked[ranked.length-1].name)}</span> (avg ★${ranked[ranked.length-1].avg.toFixed(1)})`:''}.`
+    :`No rated players drafted yet — balance fills in once teams pick players with a numeric rating.`;
+
+  const rows=teams.map(t=>{
+    const rank=rankOf[t.ti];
+    const barPct=t.avg!==null?Math.max(6,Math.round((6-t.avg)/5*100)):0;
+    const label=t.avg!==null?`★${t.avg.toFixed(1)}`:'—';
+    const partial=t.total>0&&t.ratedCount<t.total;
+    return`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+      <span style="width:22px;font-size:11px;color:var(--muted);text-align:center;">${rank?'#'+rank:'—'}</span>
+      <span style="flex:0 0 110px;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.name)}</span>
+      <div style="flex:1;background:var(--card3);border-radius:4px;height:8px;overflow:hidden;">
+        <div style="width:${barPct}%;height:100%;background:${rank===1?'var(--gold)':'rgba(116,185,255,.55)'};"></div>
+      </div>
+      <span style="width:36px;text-align:right;font-size:11px;font-weight:700;color:var(--gold);">${label}</span>
+      <span style="width:64px;text-align:right;font-size:10px;color:var(--muted);">${t.ratedCount}/${t.total} rated${partial?' *':''}</span>
+    </div>`;
+  }).join('');
+
+  return`<div class="card mb-16" style="padding:14px 18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);">⚖️ Team Balance</span>
+      <span style="font-size:10px;color:var(--muted);" title="Average of each team's rated players only (1=best, 5=weakest). Unrated players are excluded from the average, not counted as average or weak.">avg rating of rated players · lower ★ = stronger</span>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${headline}</div>
+    ${rows}
+    ${anyPartial?`<div style="font-size:10px;color:var(--muted);margin-top:8px;">* this team has one or more drafted players with no rating on file — its average only reflects the players who do have one.</div>`:''}
+  </div>`;
+}
+
 function renderAllRosters(dk){
   const d=state.divs[dk];
   const curPick=d.draftOrder[d.currentPick];
@@ -1185,9 +1240,8 @@ function renderPool(dk){
       <span class="player-rank">#${p.rank}</span>
       <div class="player-info">
         <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}${p.manualAdd?'<span class="manual-badge">MANUAL</span>':''}</div>
-        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')} · ${p.seasons?esc(p.seasons)+' seasons':'—'}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')} · ${p.seasons?esc(p.seasons)+' seasons':'—'}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">👤 '+esc(p.priorCoach)+'</span>':''}</div>
         ${p.core?`<div style="margin-top:2px;"><span class="core-badge">⚽ ${esc(p.core)}</span></div>`:''}
-        ${p.priorCoach?`<div style="margin-top:2px;"><span class="core-badge" style="background:rgba(155,89,182,.15);color:#c39bd3;">👤 Prior Coach: ${esc(p.priorCoach)}</span></div>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
         <span style="font-size:13px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:3px 9px;border-radius:5px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
