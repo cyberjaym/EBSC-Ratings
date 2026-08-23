@@ -319,7 +319,8 @@
     </div>
   </header>
   <main>
-    <div id="app-u9" class="div-app"></div>
+    <div id="app-u8" class="div-app"></div>
+    <div id="app-u9" class="div-app" style="display:none"></div>
     <div id="app-u10" class="div-app" style="display:none"></div>
     <div id="app-u1112" class="div-app" style="display:none"></div>
   </main>
@@ -514,7 +515,7 @@
 // ===================== CONSTANTS =====================
 const SIZE_ORDER=['YXS','YS','YM','YL','YXL','AS','AM','AL','AXL','AXXL','XS','S','M','L','XL','XXL','XXXL'];
 function sizeRank(s){if(!s)return -1;const n=String(s).toUpperCase().replace(/\s/g,'');const i=SIZE_ORDER.indexOf(n);return i>=0?i:-1;}
-let DIV_CONFIG={u9:{label:'U9',teams:4},u10:{label:'U10',teams:4},u1112:{label:'U11/12',teams:8}};
+let DIV_CONFIG={u8:{label:'U8',teams:4},u9:{label:'U9',teams:4},u10:{label:'U10',teams:4},u1112:{label:'U11/12',teams:6}};
 
 // ===================== STATE =====================
 function freshDiv(k){
@@ -526,7 +527,7 @@ function freshDiv(k){
     setupSelectedPlayerId:null // for setup pre-assign panel
   };
 }
-const state={currentDiv:'u9',divs:{u9:freshDiv('u9'),u10:freshDiv('u10'),u1112:freshDiv('u1112')},removedDivs:{}};
+const state={currentDiv:'u8',divs:{u8:freshDiv('u8'),u9:freshDiv('u9'),u10:freshDiv('u10'),u1112:freshDiv('u1112')},removedDivs:{}};
 
 // admin modal context — stored separately so confirm callback can safely reference it
 let adminCtx={divKey:null,selectedPlayerId:null,selectedTeamIdx:null};
@@ -2880,7 +2881,7 @@ function showSaveIndicator(){
 function serializeState(){
   // Serialize divs state — exclude non-serializable (intervals, functions, selectedPlayer obj)
   const out={currentDiv:state.currentDiv,divs:{}};
-  for(const dk of ['u9','u10','u1112']){
+  for(const dk of ['u8','u9','u10','u1112']){
     const d=state.divs[dk];
     out.divs[dk]={
       divKey:d.divKey,
@@ -2919,7 +2920,7 @@ function serializeState(){
 }
 
 function deserializeState(saved){
-  for(const dk of ['u9','u10','u1112']){
+  for(const dk of ['u8','u9','u10','u1112']){
     const s=saved.divs[dk];
     if(!s||!s.players||!s.players.length)continue;
     const d=state.divs[dk];
