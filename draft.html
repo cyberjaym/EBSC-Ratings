@@ -609,6 +609,9 @@ function buildUpload(dk){
       <div class="card-header"><span class="card-title">📂 Load Roster File</span><span class="badge badge-gold">${cfg.teams} Teams</span></div>
       <div class="card-body">
         <div class="alert alert-info">ℹ️ Columns (in order): Division · First Name · Last Name · Birth Date · Parent Email · Jersey Size · Parent Is Coach · Prior Coach</div>
+        <div style="text-align:right;margin-top:-4px;margin-bottom:14px;">
+          <button onclick="downloadRosterTemplate('${dk}')" style="background:transparent;border:none;color:var(--line);font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;letter-spacing:.3px;">⬇ Download blank roster template (.xlsx)</button>
+        </div>
         <label class="upload-zone" id="dropzone-${dk}">
           <input type="file" accept=".xlsx,.xls,.csv" onchange="handleFile(event,'${dk}')">
           <div class="upload-icon">📋</div>
@@ -645,7 +648,7 @@ function mapHeaders(hdr){
     email:['email','e-mail','parent email'],
     jerseySize:['shirt size','jersey size','shirt','size'],
     seasons:['seasons','season'],
-    workBond:['workbond','work bond'],
+    workBond:['workbond','work bond','parent is coach','parent coach'],
     position:['position','pos'],
     rating:['rating'],
     coachNotes:['4 core','coach name'],
@@ -2754,6 +2757,26 @@ function exportCSV(dk){
     alert('Saved as CSV (Excel file requires internet connection for the first load). Open the .csv file in Excel.');
   }catch(e){
     alert('Export failed: '+e.message);
+  }
+}
+
+// ===================== ROSTER TEMPLATE =====================
+function downloadRosterTemplate(dk){
+  const cfg=DIV_CONFIG[dk];
+  if(typeof XLSX==='undefined'){
+    alert('Excel library not loaded. Please open via http://localhost:8080 to use this feature.');
+    return;
+  }
+  try{
+    const headers=['Division','First Name','Last Name','Birth Date','Parent Email','Jersey Size','Parent Is Coach','Prior Coach'];
+    const example=[cfg.label,'Jane','Doe','2016-04-12','jane.parent@email.com','YM','No','Coach Smith'];
+    const ws=XLSX.utils.aoa_to_sheet([headers,example]);
+    ws['!cols']=[{wch:10},{wch:14},{wch:14},{wch:12},{wch:26},{wch:12},{wch:15},{wch:18}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Roster');
+    XLSX.writeFile(wb,`EBSC_${cfg.label}_Roster_Template.xlsx`);
+  }catch(err){
+    alert('Template download failed: '+err.message);
   }
 }
 
