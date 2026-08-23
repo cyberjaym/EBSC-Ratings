@@ -1165,14 +1165,15 @@ function renderTeamBalance(dk){
   const anyPartial=teams.some(t=>t.total>0&&t.ratedCount<t.total);
 
   const headline=ranked.length?
-    `<span style="color:var(--gold);font-weight:700;">${esc(ranked[0].name)}</span> is currently the strongest roster — avg ★${ranked[0].avg.toFixed(1)} across ${ranked[0].ratedCount} rated pick${ranked[0].ratedCount!==1?'s':''}${ranked.length>1?`, ahead of <span style="color:var(--muted);">${esc(ranked[ranked.length-1].name)}</span> (avg ★${ranked[ranked.length-1].avg.toFixed(1)})`:''}.`
+    `<span style="color:var(--gold);font-weight:700;">${esc(ranked[0].name)}</span> is currently the strongest roster — avg ★${ranked[0].avg.toFixed(1)} across ${ranked[0].ratedCount} rated pick${ranked[0].ratedCount!==1?'s':''}${ranked[0].total-ranked[0].ratedCount>0?` (${ranked[0].total-ranked[0].ratedCount} unrated)`:''}${ranked.length>1?`, ahead of <span style="color:var(--muted);">${esc(ranked[ranked.length-1].name)}</span> (avg ★${ranked[ranked.length-1].avg.toFixed(1)})`:''}.`
     :`No rated players drafted yet — balance fills in once teams pick players with a numeric rating.`;
 
   const rows=teams.map(t=>{
     const rank=rankOf[t.ti];
     const barPct=t.avg!==null?Math.max(6,Math.round((6-t.avg)/5*100)):0;
     const label=t.avg!==null?`★${t.avg.toFixed(1)}`:'—';
-    const partial=t.total>0&&t.ratedCount<t.total;
+    const unrated=t.total-t.ratedCount;
+    const partial=t.total>0&&unrated>0;
     return`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
       <span style="width:22px;font-size:11px;color:var(--muted);text-align:center;">${rank?'#'+rank:'—'}</span>
       <span style="flex:0 0 110px;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.name)}</span>
@@ -1180,7 +1181,7 @@ function renderTeamBalance(dk){
         <div style="width:${barPct}%;height:100%;background:${rank===1?'var(--gold)':'rgba(116,185,255,.55)'};"></div>
       </div>
       <span style="width:36px;text-align:right;font-size:11px;font-weight:700;color:var(--gold);">${label}</span>
-      <span style="width:64px;text-align:right;font-size:10px;color:var(--muted);">${t.ratedCount}/${t.total} rated${partial?' *':''}</span>
+      <span style="width:150px;text-align:right;font-size:10px;color:var(--muted);">${t.ratedCount} rated${partial?`, <span style="color:#e6a23c;">${unrated} unrated</span>`:''} (${t.total} total)</span>
     </div>`;
   }).join('');
 
@@ -1191,7 +1192,7 @@ function renderTeamBalance(dk){
     </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${headline}</div>
     ${rows}
-    ${anyPartial?`<div style="font-size:10px;color:var(--muted);margin-top:8px;">* this team has one or more drafted players with no rating on file — its average only reflects the players who do have one.</div>`:''}
+    ${anyPartial?`<div style="font-size:10px;color:var(--muted);margin-top:8px;">Unrated players (no rating on file) are counted toward each team's total but excluded from its average ★.</div>`:''}
   </div>`;
 }
 
