@@ -299,7 +299,6 @@
   .save-indicator.show{opacity:1;}
   .admin-badge{font-size:9px;background:rgba(155,89,182,.25);color:#c39bd3;padding:1px 5px;border-radius:3px;font-weight:700;flex-shrink:0;}
   .manual-badge{font-size:9px;background:rgba(72,199,142,.2);color:#48c78e;padding:1px 5px;border-radius:3px;font-weight:700;flex-shrink:0;}
-  .core-badge{font-size:10px;background:rgba(72,149,239,.15);color:#74b9ff;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
   .add-player-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
   .add-player-form .field{margin-bottom:0;}
 </style>
@@ -393,7 +392,6 @@
       <div class="field"><div class="label">Seasons</div><input type="text" id="pap-seasons"></div>
       <div class="field"><div class="label">Position</div><input type="text" id="pap-position"></div>
       <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="pap-rating" min="1" max="5" style="width:100%;"></div>
-      <div class="field"><div class="label">Core</div><input type="text" id="pap-core"></div>
       <div class="field"><div class="label">Prior Coach</div><input type="text" id="pap-priorCoach"></div>
       <div class="field"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:18px;"><input type="checkbox" id="pap-hasSibling"> 👤 Has Sibling in Program</label></div>
     </div>
@@ -443,7 +441,6 @@
       <div class="field"><div class="label">Seasons</div><input type="text" id="ep-seasons"></div>
       <div class="field"><div class="label">Position</div><input type="text" id="ep-position"></div>
       <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="ep-rating" min="1" max="5" style="width:100%;"></div>
-      <div class="field"><div class="label">Core (Coach Name)</div><input type="text" id="ep-core"></div>
       <div class="field"><div class="label">Prior Coach</div><input type="text" id="ep-priorCoach"></div>
       <div class="field"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:18px;"><input type="checkbox" id="ep-hasSibling"> 👤 Has Sibling in Program</label></div>
     </div>
@@ -475,7 +472,6 @@
       <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="ap-rating" placeholder="1–5" min="1" max="5" style="width:100%;"></div>
       <div class="field"><div class="label">Prior Coach</div><input type="text" id="ap-priorCoach" placeholder="Prior coach name if applicable"></div>
       <div class="field"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:18px;"><input type="checkbox" id="ap-hasSibling"> 👤 Has Sibling in Program</label></div>
-      <div class="field" style="grid-column:1/-1;"><div class="label">Core (Coach Name)</div><input type="text" id="ap-core" placeholder="Coach name if applicable"></div>
     </div>
     <div id="ap-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;display:none;"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
@@ -663,7 +659,6 @@ function mapHeaders(hdr){
     workBond:['workbond','work bond','parent is coach','parent coach'],
     position:['position','pos'],
     rating:['rating'],
-    coachNotes:['4 core','coach name'],
     priorCoach:['priorcoach','prior coach'],
     hasSibling:['has sibling','has siblings','sibling','siblings'],
     notes:['notes']
@@ -703,7 +698,6 @@ function parseFile(file,dk){
           workBond:get(row,'workBond'),
           position:get(row,'position'),
           rating:parseFloat(get(row,'rating'))||99,
-          core:get(row,'coachNotes'),
           priorCoach:get(row,'priorCoach'),
           hasSibling:toBool(get(row,'hasSibling')),
           notes:get(row,'notes'),
@@ -785,7 +779,7 @@ function renderSetup(dk){
       <span class="player-rank">#${p.rank}</span>
       <div class="player-info">
         <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}</div>
-        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.core?' · <span style="color:#74b9ff;font-weight:600;">⚽ '+esc(p.core)+'</span>':''}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">'+esc(p.priorCoach)+'</span>':''}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">'+esc(p.priorCoach)+'</span>':''}</div>
       </div>
       <span style="font-size:12px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:2px 8px;border-radius:4px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
     </div>`).join(''):`<div class="empty-state" style="padding:20px;"><div>✅</div>All players assigned</div>`;
@@ -910,7 +904,7 @@ function renderSetupPool(dk){
       <span class="player-rank">#${p.rank}</span>
       <div class="player-info">
         <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}</div>
-        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.core?' · <span style="color:#74b9ff;font-weight:600;">⚽ '+esc(p.core)+'</span>':''}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">'+esc(p.priorCoach)+'</span>':''}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">'+esc(p.priorCoach)+'</span>':''}</div>
       </div>
       <span style="font-size:12px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:2px 8px;border-radius:4px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
     </div>`).join(''):`<div class="empty-state" style="padding:20px;"><div>✅</div>All players assigned</div>`;
@@ -1274,7 +1268,6 @@ function renderPool(dk){
       <div class="player-info">
         <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}${p.manualAdd?'<span class="manual-badge">MANUAL</span>':''}</div>
         <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')} · ${p.seasons?esc(p.seasons)+' seasons':'—'}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">'+esc(p.priorCoach)+'</span>':''}</div>
-        ${p.core?`<div style="margin-top:2px;"><span class="core-badge">⚽ ${esc(p.core)}</span></div>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
         <span style="font-size:13px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:3px 9px;border-radius:5px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
@@ -1356,7 +1349,7 @@ function selectPlayer(dk,pid,evt){
   if(evt&&evt.currentTarget)evt.currentTarget.classList.add('selected');
   const det=document.getElementById(`player-detail-${dk}`);
   det.className='player-detail open';
-  det.innerHTML=`<div class="player-detail-name">${esc(player.firstName)} ${esc(player.lastName)}</div><div class="detail-grid"><div class="detail-item"><div class="dk">Rating</div><div class="dv" style="color:var(--gold);font-size:18px;">&#9733; ${player.rating===99?'?':player.rating}</div></div><div class="detail-item"><div class="dk">Age</div><div class="dv">${fmtAge(player)}</div></div><div class="detail-item"><div class="dk">Position</div><div class="dv">${esc(player.position||'—')}</div></div><div class="detail-item"><div class="dk">Shirt Size</div><div class="dv">${player.jerseySize||'—'}</div></div><div class="detail-item"><div class="dk">Seasons</div><div class="dv">${esc(player.seasons||'—')}</div></div><div class="detail-item"><div class="dk">Rank</div><div class="dv">#${player.rank}</div></div></div>${player.core?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Core:</span> ${esc(player.core)}</div>`:''}${player.priorCoach?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Prior Coach:</span> ${esc(player.priorCoach)}</div>`:''}${player.hasSibling?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;">👤 <span style="color:var(--gold);font-weight:600;">Has Sibling in Program</span></div>`:''}`;
+  det.innerHTML=`<div class="player-detail-name">${esc(player.firstName)} ${esc(player.lastName)}</div><div class="detail-grid"><div class="detail-item"><div class="dk">Rating</div><div class="dv" style="color:var(--gold);font-size:18px;">&#9733; ${player.rating===99?'?':player.rating}</div></div><div class="detail-item"><div class="dk">Age</div><div class="dv">${fmtAge(player)}</div></div><div class="detail-item"><div class="dk">Position</div><div class="dv">${esc(player.position||'—')}</div></div><div class="detail-item"><div class="dk">Shirt Size</div><div class="dv">${player.jerseySize||'—'}</div></div><div class="detail-item"><div class="dk">Seasons</div><div class="dv">${esc(player.seasons||'—')}</div></div><div class="detail-item"><div class="dk">Rank</div><div class="dv">#${player.rank}</div></div></div>${player.priorCoach?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Prior Coach:</span> ${esc(player.priorCoach)}</div>`:''}${player.hasSibling?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;">👤 <span style="color:var(--gold);font-weight:600;">Has Sibling in Program</span></div>`:''}`;
   document.getElementById(`draft-btn-${dk}`).disabled=false;
 }
 function updateSearch(dk,v){state.divs[dk].searchQuery=v;document.getElementById(`pool-list-${dk}`).innerHTML=renderPool(dk);}
@@ -1381,7 +1374,7 @@ function openAddPlayerModal(dk){
   // Store divKey on modal
   document.getElementById('addPlayerModal').dataset.dk=dk;
   // Clear all fields
-  ['orgMemberId','division','firstName','lastName','birthdate','email','phone','shirtSize','seasons','workBond','position','rating','core','priorCoach']
+  ['orgMemberId','division','firstName','lastName','birthdate','email','phone','shirtSize','seasons','workBond','position','rating','priorCoach']
     .forEach(f=>{const el=document.getElementById('ap-'+f);if(el)el.value='';});
   document.getElementById('ap-hasSibling').checked=false;
   // Pre-fill division from current div
@@ -1429,7 +1422,6 @@ function submitAddPlayer(){
     workBond:document.getElementById('ap-workBond').value.trim(),
     position:document.getElementById('ap-position').value.trim(),
     rating,
-    core:document.getElementById('ap-core').value.trim(),
     priorCoach:document.getElementById('ap-priorCoach').value.trim(),
     hasSibling:document.getElementById('ap-hasSibling').checked,
     notes:'',
@@ -1920,7 +1912,7 @@ function openPostAddPlayer(dk){
   // Pre-fill division
   document.getElementById('pap-division').value=DIV_CONFIG[dk]?.label||'';
   // Clear other fields
-  ['orgMemberId','firstName','lastName','birthdate','email','phone','shirtSize','seasons','position','rating','core','priorCoach']
+  ['orgMemberId','firstName','lastName','birthdate','email','phone','shirtSize','seasons','position','rating','priorCoach']
     .forEach(f=>{const el=document.getElementById('pap-'+f);if(el)el.value='';});
   document.getElementById('pap-hasSibling').checked=false;
   document.getElementById('pap-error').style.display='none';
@@ -1966,7 +1958,7 @@ function submitPostAddPlayer(keepOpen){
     seasons:document.getElementById('pap-seasons').value.trim(),
     workBond:'',
     position:document.getElementById('pap-position').value.trim(),
-    rating,core:document.getElementById('pap-core').value.trim(),
+    rating,
     priorCoach:document.getElementById('pap-priorCoach').value.trim(),
     hasSibling:document.getElementById('pap-hasSibling').checked,
     notes:'',manualAdd:false,postDraftAdd:true,
@@ -1985,7 +1977,7 @@ function submitPostAddPlayer(keepOpen){
     document.getElementById('pap-firstName').value='';
     document.getElementById('pap-lastName').value='';
     document.getElementById('pap-teamSelect').value='';
-    ['orgMemberId','birthdate','email','phone','shirtSize','seasons','position','rating','core','priorCoach']
+    ['orgMemberId','birthdate','email','phone','shirtSize','seasons','position','rating','priorCoach']
       .forEach(f=>{const el=document.getElementById('pap-'+f);if(el)el.value='';});
     document.getElementById('pap-hasSibling').checked=false;
     document.getElementById('pap-firstName').focus();
@@ -2278,7 +2270,6 @@ function openEditPlayer(dk,pid){
   document.getElementById('ep-seasons').value=p.seasons||'';
   document.getElementById('ep-position').value=p.position||'';
   document.getElementById('ep-rating').value=p.rating===99?'':p.rating;
-  document.getElementById('ep-core').value=p.core||'';
   document.getElementById('ep-priorCoach').value=p.priorCoach||'';
   document.getElementById('ep-hasSibling').checked=!!p.hasSibling;
   document.getElementById('ep-error').style.display='none';
@@ -2326,7 +2317,6 @@ function submitEditPlayer(){
   p.position=document.getElementById('ep-position').value.trim();
   const ratingRaw=parseFloat(document.getElementById('ep-rating').value);
   p.rating=(isNaN(ratingRaw)||ratingRaw<1||ratingRaw>5)?99:Math.round(ratingRaw);
-  p.core=document.getElementById('ep-core').value.trim();
   p.priorCoach=document.getElementById('ep-priorCoach').value.trim();
   p.hasSibling=document.getElementById('ep-hasSibling').checked;
 
@@ -2551,7 +2541,7 @@ function printRoster(dk){
     const wb=XLSX.utils.book_new();
 
     // ── Header row ──
-    const headers=['#','First Name','Last Name','Age','Jersey Size','Rating','Position','Core Team','Prior Coach','Has Sibling'];
+    const headers=['#','First Name','Last Name','Age','Jersey Size','Rating','Position','Prior Coach','Has Sibling'];
 
     // ── Data rows ──
     const rows=players.map((p,i)=>[
@@ -2562,7 +2552,6 @@ function printRoster(dk){
       p.jerseySize||'',
       p.rating===99||p.rating===null?'':p.rating,
       p.position||'',
-      p.core||'',
       p.priorCoach||'',
       p.hasSibling?'Yes':''
     ]);
@@ -2579,7 +2568,6 @@ function printRoster(dk){
       {wch:10},  // Jersey Size
       {wch:7},   // Rating
       {wch:14},  // Position
-      {wch:22},  // Core Team
       {wch:18},  // Prior Coach
       {wch:12},  // Has Sibling
     ];
@@ -2710,13 +2698,12 @@ function printRoster(dk){
 function buildRows(dk){
   const d=state.divs[dk];
   const tl={pre:'Pre-Assigned',admin:'Admin Assigned',draft:'Drafted',post:'Post-Draft Add',null:'Undrafted'};
-  const rows=[['Org Member ID','Division','First Name','Last Name','Birthdate','Email','Phone Number','Shirt Size','Seasons','WorkBond','Position','Rating','Core','Prior Coach','Has Sibling','Notes','Manual Add','Assignment Type','Coach (Team)','Draft Round','Draft Pick']];
+  const rows=[['Org Member ID','Division','First Name','Last Name','Birthdate','Email','Phone Number','Shirt Size','Seasons','WorkBond','Position','Rating','Prior Coach','Has Sibling','Notes','Manual Add','Assignment Type','Coach (Team)','Draft Round','Draft Pick']];
   d.players.forEach(p=>rows.push([
     p.orgMemberId||'',p.division||'',p.firstName||'',p.lastName||'',
     p.birthDate?p.birthDate.toLocaleDateString('en-US'):'',
     p.email||'',p.phone||'',p.jerseySize||'',p.seasons||'',p.workBond||'',p.position||'',
     (p.rating===99||p.rating===null||p.rating===undefined)?'':p.rating,
-    p.core||'',
     p.priorCoach||'',
     p.hasSibling?'Yes':'',
     p.notes||'',
@@ -2730,7 +2717,7 @@ function buildTeamRows(dk){
   const d=state.divs[dk];
   return d.coaches.map((coach,ti)=>{
     const picks=d.picks.filter(p=>p.teamIdx===ti);
-    const rows=[['Org Member ID','Type','Round','Pick','First Name','Last Name','Birthdate','Phone Number','Shirt Size','Rating','Position','Seasons','WorkBond','Core','Prior Coach','Has Sibling','Notes']];
+    const rows=[['Org Member ID','Type','Round','Pick','First Name','Last Name','Birthdate','Phone Number','Shirt Size','Rating','Position','Seasons','WorkBond','Prior Coach','Has Sibling','Notes']];
     [...picks.filter(p=>p.type==='pre'),...picks.filter(p=>p.type==='admin'),...picks.filter(p=>p.type==='draft').sort((a,b)=>(a.pickNum||0)-(b.pickNum||0))]
       .forEach(pk=>{
         if(!pk.player)return;
@@ -2743,7 +2730,7 @@ function buildTeamRows(dk){
           pk.player.phone||'',
           pk.player.jerseySize||'',
           (pk.player.rating===99||pk.player.rating===null)?'':pk.player.rating,
-          pk.player.position||'',pk.player.seasons||'',pk.player.workBond||'',pk.player.core||'',pk.player.priorCoach||'',pk.player.hasSibling?'Yes':'',pk.player.notes||''
+          pk.player.position||'',pk.player.seasons||'',pk.player.workBond||'',pk.player.priorCoach||'',pk.player.hasSibling?'Yes':'',pk.player.notes||''
         ]);
       });
     const safeName=coach.name.replace(/[^a-zA-Z0-9 ]/g,'').substring(0,25)||('Team '+(ti+1));
@@ -2837,7 +2824,7 @@ function loadTestData(dk){
     const hasSibling=i%3===0;
     const orgMemberId=String(100000+i);
     const phone=`555-${String(200+i).padStart(3,'0')}-${String(1000+i*7%9000).padStart(4,'0')}`;
-    players.push({id:i+1,orgMemberId,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,phone,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],core:'',priorCoach,hasSibling,notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
+    players.push({id:i+1,orgMemberId,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,phone,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],priorCoach,hasSibling,notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
   }
   finalizePlayers(players,dk);
 }
@@ -2899,7 +2886,7 @@ function serializeState(){
         id:p.id,orgMemberId:p.orgMemberId,division:p.division,firstName:p.firstName,lastName:p.lastName,
         birthDate:p.birthDate?p.birthDate.toISOString():null,
         email:p.email,phone:p.phone,jerseySize:p.jerseySize,seasons:p.seasons,workBond:p.workBond,
-        position:p.position,rating:p.rating,core:p.core,priorCoach:p.priorCoach,hasSibling:p.hasSibling,notes:p.notes,
+        position:p.position,rating:p.rating,priorCoach:p.priorCoach,hasSibling:p.hasSibling,notes:p.notes,
         manualAdd:p.manualAdd||false,
         ageMs:p.ageMs,ageYears:p.ageYears,ageDays:p.ageDays,rank:p.rank,
         drafted:p.drafted,draftPick:p.draftPick,draftRound:p.draftRound,
