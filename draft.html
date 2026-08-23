@@ -392,6 +392,7 @@
       <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="pap-rating" min="1" max="5" style="width:100%;"></div>
       <div class="field"><div class="label">Core</div><input type="text" id="pap-core"></div>
       <div class="field"><div class="label">Prior Coach</div><input type="text" id="pap-priorCoach"></div>
+      <div class="field"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:18px;"><input type="checkbox" id="pap-hasSibling"> 👤 Has Sibling in Program</label></div>
     </div>
     <div class="field" style="margin-top:10px;">
       <div class="label">Assign to Team <span style="color:var(--danger);">*</span></div>
@@ -439,6 +440,7 @@
       <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="ep-rating" min="1" max="5" style="width:100%;"></div>
       <div class="field"><div class="label">Core (Coach Name)</div><input type="text" id="ep-core"></div>
       <div class="field"><div class="label">Prior Coach</div><input type="text" id="ep-priorCoach"></div>
+      <div class="field"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:18px;"><input type="checkbox" id="ep-hasSibling"> 👤 Has Sibling in Program</label></div>
     </div>
     <div id="ep-error" style="color:var(--danger);font-size:12px;margin-top:6px;display:none;"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
@@ -465,6 +467,7 @@
       <div class="field"><div class="label">Position</div><input type="text" id="ap-position" placeholder="e.g. Forward"></div>
       <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="ap-rating" placeholder="1–5" min="1" max="5" style="width:100%;"></div>
       <div class="field"><div class="label">Prior Coach</div><input type="text" id="ap-priorCoach" placeholder="Prior coach name if applicable"></div>
+      <div class="field"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:18px;"><input type="checkbox" id="ap-hasSibling"> 👤 Has Sibling in Program</label></div>
       <div class="field" style="grid-column:1/-1;"><div class="label">Core (Coach Name)</div><input type="text" id="ap-core" placeholder="Coach name if applicable"></div>
     </div>
     <div id="ap-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;display:none;"></div>
@@ -608,7 +611,7 @@ function buildUpload(dk){
     <div class="card mb-16" style="max-width:680px;margin-left:auto;margin-right:auto;">
       <div class="card-header"><span class="card-title">📂 Load Roster File</span><span class="badge badge-gold">${cfg.teams} Teams</span></div>
       <div class="card-body">
-        <div class="alert alert-info">ℹ️ Columns (in order): Division · First Name · Last Name · Birth Date · Parent Email · Jersey Size · Parent Is Coach · Prior Coach</div>
+        <div class="alert alert-info">ℹ️ Columns (in order): Division · First Name · Last Name · Birth Date · Parent Email · Jersey Size · Parent Is Coach · Prior Coach · Has Sibling</div>
         <div style="text-align:right;margin-top:-4px;margin-bottom:14px;">
           <button onclick="downloadRosterTemplate('${dk}')" style="background:transparent;border:none;color:var(--line);font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;letter-spacing:.3px;">⬇ Download blank roster template (.xlsx)</button>
         </div>
@@ -653,6 +656,7 @@ function mapHeaders(hdr){
     rating:['rating'],
     coachNotes:['4 core','coach name'],
     priorCoach:['priorcoach','prior coach'],
+    hasSibling:['has sibling','has siblings','sibling','siblings'],
     notes:['notes']
   };
   hdr.forEach((h,i)=>{
@@ -690,6 +694,7 @@ function parseFile(file,dk){
           rating:parseFloat(get(row,'rating'))||99,
           core:get(row,'coachNotes'),
           priorCoach:get(row,'priorCoach'),
+          hasSibling:toBool(get(row,'hasSibling')),
           notes:get(row,'notes'),
           drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null
         };
@@ -722,6 +727,7 @@ function finalizePlayers(players,dk){
 }
 
 function s(v){return String(v||'').trim();}
+function toBool(v){const t=String(v||'').trim().toLowerCase();return t==='y'||t==='yes'||t==='true'||t==='1'||t==='x';}
 function parseDOB(v){if(!v)return null;if(v instanceof Date)return v;const sv=String(v).trim();const d=new Date(sv);if(!isNaN(d))return d;const m=sv.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);if(m)return new Date(`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`);return null;}
 function isCoach(v){if(!v)return false;return['yes','y','true','1','coach','x'].includes(String(v).trim().toLowerCase());}
 function fmtAge(p){if(!p.birthDate)return'?';return Math.round(p.ageYears)+'y';}
@@ -1250,7 +1256,10 @@ function renderPool(dk){
   if(!players.length)return`<div class="empty-state"><div class="es-icon">✅</div>All players drafted!</div>`;
   return players.map(p=>`
     <div class="player-card-row ${d.selectedPlayer?.id===p.id?'selected':''}" onclick="selectPlayer('${dk}',${p.id},event)">
-      <span class="player-rank">#${p.rank}</span>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:24px;">
+        <span class="player-rank" style="width:auto;">#${p.rank}</span>
+        ${p.hasSibling?'<span title="Has a sibling in the program" style="font-size:12px;line-height:1;">👤</span>':''}
+      </div>
       <div class="player-info">
         <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}${p.manualAdd?'<span class="manual-badge">MANUAL</span>':''}</div>
         <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')} · ${p.seasons?esc(p.seasons)+' seasons':'—'}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">👤 '+esc(p.priorCoach)+'</span>':''}</div>
@@ -1336,7 +1345,7 @@ function selectPlayer(dk,pid,evt){
   if(evt&&evt.currentTarget)evt.currentTarget.classList.add('selected');
   const det=document.getElementById(`player-detail-${dk}`);
   det.className='player-detail open';
-  det.innerHTML=`<div class="player-detail-name">${esc(player.firstName)} ${esc(player.lastName)}</div><div class="detail-grid"><div class="detail-item"><div class="dk">Rating</div><div class="dv" style="color:var(--gold);font-size:18px;">&#9733; ${player.rating===99?'?':player.rating}</div></div><div class="detail-item"><div class="dk">Age</div><div class="dv">${fmtAge(player)}</div></div><div class="detail-item"><div class="dk">Position</div><div class="dv">${esc(player.position||'—')}</div></div><div class="detail-item"><div class="dk">Shirt Size</div><div class="dv">${player.jerseySize||'—'}</div></div><div class="detail-item"><div class="dk">Seasons</div><div class="dv">${esc(player.seasons||'—')}</div></div><div class="detail-item"><div class="dk">Rank</div><div class="dv">#${player.rank}</div></div></div>${player.core?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Core:</span> ${esc(player.core)}</div>`:''}${player.priorCoach?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Prior Coach:</span> ${esc(player.priorCoach)}</div>`:''}`;
+  det.innerHTML=`<div class="player-detail-name">${esc(player.firstName)} ${esc(player.lastName)}</div><div class="detail-grid"><div class="detail-item"><div class="dk">Rating</div><div class="dv" style="color:var(--gold);font-size:18px;">&#9733; ${player.rating===99?'?':player.rating}</div></div><div class="detail-item"><div class="dk">Age</div><div class="dv">${fmtAge(player)}</div></div><div class="detail-item"><div class="dk">Position</div><div class="dv">${esc(player.position||'—')}</div></div><div class="detail-item"><div class="dk">Shirt Size</div><div class="dv">${player.jerseySize||'—'}</div></div><div class="detail-item"><div class="dk">Seasons</div><div class="dv">${esc(player.seasons||'—')}</div></div><div class="detail-item"><div class="dk">Rank</div><div class="dv">#${player.rank}</div></div></div>${player.core?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Core:</span> ${esc(player.core)}</div>`:''}${player.priorCoach?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Prior Coach:</span> ${esc(player.priorCoach)}</div>`:''}${player.hasSibling?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;">👤 <span style="color:var(--gold);font-weight:600;">Has Sibling in Program</span></div>`:''}`;
   document.getElementById(`draft-btn-${dk}`).disabled=false;
 }
 function updateSearch(dk,v){state.divs[dk].searchQuery=v;document.getElementById(`pool-list-${dk}`).innerHTML=renderPool(dk);}
@@ -1363,6 +1372,7 @@ function openAddPlayerModal(dk){
   // Clear all fields
   ['division','firstName','lastName','birthdate','email','shirtSize','seasons','workBond','position','rating','core','priorCoach']
     .forEach(f=>{const el=document.getElementById('ap-'+f);if(el)el.value='';});
+  document.getElementById('ap-hasSibling').checked=false;
   // Pre-fill division from current div
   const cfg=DIV_CONFIG[dk];
   document.getElementById('ap-division').value=cfg.label;
@@ -1408,6 +1418,7 @@ function submitAddPlayer(){
     rating,
     core:document.getElementById('ap-core').value.trim(),
     priorCoach:document.getElementById('ap-priorCoach').value.trim(),
+    hasSibling:document.getElementById('ap-hasSibling').checked,
     notes:'',
     manualAdd:true,
     drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null,
@@ -1898,6 +1909,7 @@ function openPostAddPlayer(dk){
   // Clear other fields
   ['firstName','lastName','birthdate','email','shirtSize','seasons','position','rating','core','priorCoach']
     .forEach(f=>{const el=document.getElementById('pap-'+f);if(el)el.value='';});
+  document.getElementById('pap-hasSibling').checked=false;
   document.getElementById('pap-error').style.display='none';
   document.getElementById('postAddPlayerModal').classList.add('open');
   document.getElementById('pap-firstName').focus();
@@ -1941,6 +1953,7 @@ function submitPostAddPlayer(keepOpen){
     position:document.getElementById('pap-position').value.trim(),
     rating,core:document.getElementById('pap-core').value.trim(),
     priorCoach:document.getElementById('pap-priorCoach').value.trim(),
+    hasSibling:document.getElementById('pap-hasSibling').checked,
     notes:'',manualAdd:false,postDraftAdd:true,
     ageMs,ageYears,ageDays,rank:d.players.length+1,
     drafted:true,
@@ -1959,6 +1972,7 @@ function submitPostAddPlayer(keepOpen){
     document.getElementById('pap-teamSelect').value='';
     ['birthdate','email','shirtSize','seasons','position','rating','core','priorCoach']
       .forEach(f=>{const el=document.getElementById('pap-'+f);if(el)el.value='';});
+    document.getElementById('pap-hasSibling').checked=false;
     document.getElementById('pap-firstName').focus();
   } else {
     closePostAddPlayer();
@@ -2249,6 +2263,7 @@ function openEditPlayer(dk,pid){
   document.getElementById('ep-rating').value=p.rating===99?'':p.rating;
   document.getElementById('ep-core').value=p.core||'';
   document.getElementById('ep-priorCoach').value=p.priorCoach||'';
+  document.getElementById('ep-hasSibling').checked=!!p.hasSibling;
   document.getElementById('ep-error').style.display='none';
   document.getElementById('editPlayerModal').classList.add('open');
   document.getElementById('ep-firstName').focus();
@@ -2294,6 +2309,7 @@ function submitEditPlayer(){
   p.rating=(isNaN(ratingRaw)||ratingRaw<1||ratingRaw>5)?99:Math.round(ratingRaw);
   p.core=document.getElementById('ep-core').value.trim();
   p.priorCoach=document.getElementById('ep-priorCoach').value.trim();
+  p.hasSibling=document.getElementById('ep-hasSibling').checked;
 
   // Also update draftTeam label on any existing pick
   const pick=d.picks.find(pk=>pk.player&&pk.player.id===editPlayerId);
@@ -2516,7 +2532,7 @@ function printRoster(dk){
     const wb=XLSX.utils.book_new();
 
     // ── Header row ──
-    const headers=['#','First Name','Last Name','Age','Jersey Size','Rating','Position','Core Team','Prior Coach'];
+    const headers=['#','First Name','Last Name','Age','Jersey Size','Rating','Position','Core Team','Prior Coach','Has Sibling'];
 
     // ── Data rows ──
     const rows=players.map((p,i)=>[
@@ -2528,7 +2544,8 @@ function printRoster(dk){
       p.rating===99||p.rating===null?'':p.rating,
       p.position||'',
       p.core||'',
-      p.priorCoach||''
+      p.priorCoach||'',
+      p.hasSibling?'Yes':''
     ]);
 
     const sheetData=[headers,...rows];
@@ -2545,6 +2562,7 @@ function printRoster(dk){
       {wch:14},  // Position
       {wch:22},  // Core Team
       {wch:18},  // Prior Coach
+      {wch:12},  // Has Sibling
     ];
 
     // ── Cell styles ──
@@ -2673,7 +2691,7 @@ function printRoster(dk){
 function buildRows(dk){
   const d=state.divs[dk];
   const tl={pre:'Pre-Assigned',admin:'Admin Assigned',draft:'Drafted',post:'Post-Draft Add',null:'Undrafted'};
-  const rows=[['Division','First Name','Last Name','Birthdate','Email','Shirt Size','Seasons','WorkBond','Position','Rating','Core','Prior Coach','Notes','Manual Add','Assignment Type','Coach (Team)','Draft Round','Draft Pick']];
+  const rows=[['Division','First Name','Last Name','Birthdate','Email','Shirt Size','Seasons','WorkBond','Position','Rating','Core','Prior Coach','Has Sibling','Notes','Manual Add','Assignment Type','Coach (Team)','Draft Round','Draft Pick']];
   d.players.forEach(p=>rows.push([
     p.division||'',p.firstName||'',p.lastName||'',
     p.birthDate?p.birthDate.toLocaleDateString('en-US'):'',
@@ -2681,6 +2699,7 @@ function buildRows(dk){
     (p.rating===99||p.rating===null||p.rating===undefined)?'':p.rating,
     p.core||'',
     p.priorCoach||'',
+    p.hasSibling?'Yes':'',
     p.notes||'',
     p.manualAdd?'Yes':'No',
     tl[p.draftType]||'Undrafted',p.draftTeam||'',p.draftRound||'',p.draftPick||''
@@ -2692,7 +2711,7 @@ function buildTeamRows(dk){
   const d=state.divs[dk];
   return d.coaches.map((coach,ti)=>{
     const picks=d.picks.filter(p=>p.teamIdx===ti);
-    const rows=[['Type','Round','Pick','First Name','Last Name','Birthdate','Shirt Size','Rating','Position','Seasons','WorkBond','Core','Prior Coach','Notes']];
+    const rows=[['Type','Round','Pick','First Name','Last Name','Birthdate','Shirt Size','Rating','Position','Seasons','WorkBond','Core','Prior Coach','Has Sibling','Notes']];
     [...picks.filter(p=>p.type==='pre'),...picks.filter(p=>p.type==='admin'),...picks.filter(p=>p.type==='draft').sort((a,b)=>(a.pickNum||0)-(b.pickNum||0))]
       .forEach(pk=>{
         if(!pk.player)return;
@@ -2703,7 +2722,7 @@ function buildTeamRows(dk){
           pk.player.birthDate?pk.player.birthDate.toLocaleDateString('en-US'):'',
           pk.player.jerseySize||'',
           (pk.player.rating===99||pk.player.rating===null)?'':pk.player.rating,
-          pk.player.position||'',pk.player.seasons||'',pk.player.workBond||'',pk.player.core||'',pk.player.priorCoach||'',pk.player.notes||''
+          pk.player.position||'',pk.player.seasons||'',pk.player.workBond||'',pk.player.core||'',pk.player.priorCoach||'',pk.player.hasSibling?'Yes':'',pk.player.notes||''
         ]);
       });
     const safeName=coach.name.replace(/[^a-zA-Z0-9 ]/g,'').substring(0,25)||('Team '+(ti+1));
@@ -2768,10 +2787,10 @@ function downloadRosterTemplate(dk){
     return;
   }
   try{
-    const headers=['Division','First Name','Last Name','Birth Date','Parent Email','Jersey Size','Parent Is Coach','Prior Coach'];
-    const example=[cfg.label,'Jane','Doe','2016-04-12','jane.parent@email.com','YM','No','Coach Smith'];
+    const headers=['Division','First Name','Last Name','Birth Date','Parent Email','Jersey Size','Parent Is Coach','Prior Coach','Has Sibling'];
+    const example=[cfg.label,'Jane','Doe','2016-04-12','jane.parent@email.com','YM','No','Coach Smith','Yes'];
     const ws=XLSX.utils.aoa_to_sheet([headers,example]);
-    ws['!cols']=[{wch:10},{wch:14},{wch:14},{wch:12},{wch:26},{wch:12},{wch:15},{wch:18}];
+    ws['!cols']=[{wch:10},{wch:14},{wch:14},{wch:12},{wch:26},{wch:12},{wch:15},{wch:18},{wch:12}];
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'Roster');
     XLSX.writeFile(wb,`EBSC_${cfg.label}_Roster_Template.xlsx`);
@@ -2794,7 +2813,8 @@ function loadTestData(dk){
     const bornDate=new Date(baseMs+Math.random()*2*365.25*24*3600*1000);
     const ratings=[1,1,2,2,2,3,3,3,4,5];const positions=['Forward','Midfielder','Defender','Goalkeeper','Forward','Midfielder','Defender','Defender','Midfielder','Forward'];
     const priorCoach=i%5===0?sampleCoaches[(i/5)%sampleCoaches.length]:'';
-    players.push({id:i+1,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],core:'',priorCoach,notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
+    const hasSibling=i%3===0;
+    players.push({id:i+1,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],core:'',priorCoach,hasSibling,notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
   }
   finalizePlayers(players,dk);
 }
@@ -2856,7 +2876,7 @@ function serializeState(){
         id:p.id,division:p.division,firstName:p.firstName,lastName:p.lastName,
         birthDate:p.birthDate?p.birthDate.toISOString():null,
         email:p.email,jerseySize:p.jerseySize,seasons:p.seasons,workBond:p.workBond,
-        position:p.position,rating:p.rating,core:p.core,priorCoach:p.priorCoach,notes:p.notes,
+        position:p.position,rating:p.rating,core:p.core,priorCoach:p.priorCoach,hasSibling:p.hasSibling,notes:p.notes,
         manualAdd:p.manualAdd||false,
         ageMs:p.ageMs,ageYears:p.ageYears,ageDays:p.ageDays,rank:p.rank,
         drafted:p.drafted,draftPick:p.draftPick,draftRound:p.draftRound,
