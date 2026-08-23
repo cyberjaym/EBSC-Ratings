@@ -1,0 +1,2905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ Draft Central — EBSC Fall 2026</title>
+<script>
+// Load XLSX: tries local file first (works offline), falls back to CDN
+(function(){
+  // Try local first
+  var local = document.createElement('script');
+  local.src = 'xlsx.full.min.js';
+  local.onerror = function(){
+    // Local not found — try CDN
+    var cdn = document.createElement('script');
+    cdn.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    cdn.onerror = function(){
+      console.warn('XLSX library not loaded — Excel export will use CSV fallback.');
+    };
+    document.head.appendChild(cdn);
+  };
+  document.head.appendChild(local);
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pitch:#1a472a;--grass:#2d6a4f;--line:#52b788;
+    --gold:#f4c430;--white:#f8f9fa;
+    --card:#0d1f17;--card2:#122a1e;--card3:#1a3d2b;
+    --text:#e8f5e9;--muted:#7fb99a;
+    --danger:#e63946;--blue:#4895ef;--purple:#9b59b6;
+    --radius:12px;--shadow:0 8px 32px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--pitch);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.015) 60px,rgba(255,255,255,.015) 120px),
+    repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(255,255,255,.012) 60px,rgba(255,255,255,.012) 120px);}
+  .app{position:relative;z-index:1;}
+  header{background:linear-gradient(135deg,#0a1a0f,#0d2416,#0a1a0f);border-bottom:3px solid var(--gold);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:72px;position:sticky;top:0;z-index:100;box-shadow:0 4px 24px rgba(0,0,0,.6);}
+  .logo{display:flex;align-items:center;gap:14px;}
+  .logo-ball{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#ddd 40%,#aaa);box-shadow:2px 2px 8px rgba(0,0,0,.5),inset -3px -3px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+  .logo-text h1{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--gold);line-height:1;}
+  .logo-text span{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .header-nav{display:flex;gap:4px;}
+  .div-tab{padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1.5px solid rgba(255,255,255,.1);background:transparent;color:var(--muted);transition:all .2s;}
+  .div-tab:hover{background:var(--card3);color:var(--text);}
+  .div-tab.active{background:var(--gold);color:#0a1a0f;border-color:var(--gold);font-weight:700;}
+  .div-tab.loaded::after{content:' ✓';}
+  main{padding:24px 32px;max-width:1700px;margin:0 auto;}
+  .card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .card-header{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;}
+  .card-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--gold);}
+  .card-body{padding:20px;}
+
+  /* UPLOAD */
+  .upload-zone{display:block;border:2px dashed rgba(82,183,136,.4);border-radius:var(--radius);padding:40px 24px;text-align:center;cursor:pointer;transition:all .25s;background:var(--card2);position:relative;overflow:hidden;}
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--gold);background:var(--card3);transform:translateY(-2px);box-shadow:0 8px 24px rgba(244,196,48,.15);}
+  .upload-zone.loaded{border-color:var(--line);border-style:solid;}
+  .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .upload-icon{font-size:48px;margin-bottom:12px;}
+  .upload-div-label{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);letter-spacing:2px;margin-bottom:6px;}
+  .upload-sub{font-size:13px;color:var(--muted);}
+  .upload-count{display:inline-block;margin-top:12px;background:var(--grass);color:#fff;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;}
+
+  /* SETUP */
+  .setup-cols{display:grid;grid-template-columns:340px 1fr;gap:20px;margin-bottom:20px;}
+  .coach-list{display:flex;flex-direction:column;gap:8px;}
+  .coach-row{display:flex;align-items:center;gap:10px;background:var(--card2);padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.06);cursor:grab;transition:all .15s;}
+  .coach-row:hover{border-color:var(--gold);background:var(--card3);}
+  .coach-row.dragging{opacity:.5;}
+  .coach-row.just-assigned{animation:slideIn .35s ease forwards;}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+  .rand-banner{background:linear-gradient(135deg,rgba(244,196,48,.12),rgba(244,196,48,.04));border:1.5px solid var(--gold);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+  .rand-banner-title{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;}
+  .rand-order-list{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+  .rand-order-item{display:flex;align-items:center;gap:10px;font-size:13px;padding:5px 0;}
+  .rand-pick-num{font-family:"DM Mono",monospace;font-size:12px;color:var(--muted);width:20px;}
+  .coach-order{width:26px;height:26px;border-radius:50%;background:var(--gold);color:#0a1a0f;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .drag-handle{color:var(--muted);font-size:16px;}
+
+  /* PRE-ASSIGN PANEL */
+  .preassign-layout{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .preassign-pool{max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
+  .pa-player-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card2);border-radius:7px;border:1px solid rgba(255,255,255,.05);cursor:pointer;transition:all .15s;}
+  .pa-player-row:hover{background:var(--card3);border-color:var(--gold);}
+  .pa-player-row.selected{background:rgba(244,196,48,.12);border-color:var(--gold);}
+  .pa-team-cols{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;}
+  .pa-team-block{background:var(--card2);border-radius:8px;border:1px solid rgba(255,255,255,.06);overflow:hidden;}
+  .pa-team-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--card3);border-bottom:1.5px solid var(--gold);}
+  .pa-team-name{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--gold);}
+  .pa-player-entry{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
+  .pa-player-entry:last-child{border-bottom:none;}
+  .pa-empty{padding:10px 12px;font-size:12px;color:var(--muted);font-style:italic;}
+
+  /* INPUTS */
+  input[type=text],input[type=number],select{background:var(--card2);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;width:100%;outline:none;transition:border-color .2s;}
+  input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(244,196,48,.1);}
+  select option{background:#0d2416;}
+  .label{font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;font-weight:600;}
+  .field{margin-bottom:14px;}
+
+  /* BUTTONS */
+  .btn{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:7px;transition:all .2s;text-transform:uppercase;letter-spacing:1px;}
+  .btn-gold{background:var(--gold);color:#0a1a0f;}
+  .btn-gold:hover{background:#f0c000;transform:translateY(-1px);box-shadow:0 4px 16px rgba(244,196,48,.35);}
+  .btn-outline{background:transparent;border:1.5px solid rgba(255,255,255,.2);color:var(--text);}
+  .btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+  .btn-danger{background:rgba(230,57,70,.15);border:1.5px solid var(--danger);color:var(--danger);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .btn-purple{background:rgba(155,89,182,.2);border:1.5px solid var(--purple);color:#c39bd3;}
+  .btn-purple:hover{background:var(--purple);color:#fff;}
+  .btn-sm{padding:6px 12px;font-size:11px;}
+  .btn-xs{padding:3px 8px;font-size:10px;letter-spacing:.5px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+
+  /* DRAFT LAYOUT - 4 columns now */
+  .draft-layout{display:grid;grid-template-columns:290px 1fr 260px 220px;gap:16px;align-items:start;min-height:0;}
+
+  /* CLOCK */
+  .clock-card{background:linear-gradient(135deg,var(--card),var(--card3));border:2px solid var(--gold);border-radius:var(--radius);padding:18px;text-align:center;margin-bottom:14px;box-shadow:0 0 30px rgba(244,196,48,.15);}
+  .clock-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:3px;}
+  .clock-team{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--gold);letter-spacing:2px;line-height:1;margin-bottom:3px;}
+  .clock-meta{font-size:12px;color:var(--muted);margin-bottom:12px;}
+  .clock-timer{font-family:'DM Mono',monospace;font-size:38px;font-weight:500;color:var(--white);line-height:1;}
+  .clock-timer.urgent{color:var(--danger);animation:pulse .5s infinite alternate;}
+  @keyframes pulse{from{opacity:1}to{opacity:.5}}
+  .timer-bar{height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:8px;overflow:hidden;}
+  .timer-fill{height:100%;background:var(--gold);border-radius:2px;transition:width 1s linear,background .5s;}
+  .timer-fill.urgent{background:var(--danger);}
+
+  /* TEAM ROSTER SIDEBAR */
+  .team-roster-card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;}
+  .team-roster-header{padding:10px 14px;background:linear-gradient(135deg,var(--grass),var(--pitch));border-radius:var(--radius) var(--radius) 0 0;border-bottom:2px solid var(--gold);}
+  .team-roster-name{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.5px;color:var(--gold);margin-bottom:2px;}
+  .team-roster-meta{font-size:10px;color:var(--muted);}
+  .team-roster-body{padding:0;}
+  .team-player-row{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;}
+  .team-player-row:last-child{border-bottom:none;}
+  .team-player-badge{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);width:32px;flex-shrink:0;}
+  .team-player-name{flex:1;font-weight:500;}
+  .team-player-size{font-size:10px;color:var(--blue);}
+  .team-empty{padding:10px 12px;font-size:11px;color:var(--muted);font-style:italic;}
+  .all-rosters-scroll{height:calc(100vh - 200px);overflow-y:auto;position:sticky;top:90px;}
+
+  /* POOL */
+  .search-bar{position:relative;margin-bottom:10px;}
+  .search-bar input{padding-left:36px;background:var(--card3);}
+  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;}
+  .player-pool-list{height:calc(100vh - 360px);min-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding-right:3px;}
+  .player-pool-list::-webkit-scrollbar{width:4px;}
+  .player-pool-list::-webkit-scrollbar-thumb{background:var(--card3);border-radius:2px;}
+  .player-card-row{background:var(--card2);border:1px solid rgba(255,255,255,.05);border-radius:7px;padding:9px 12px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:all .15s;}
+  .player-card-row:hover{background:var(--card3);border-color:var(--gold);transform:translateX(2px);}
+  .player-card-row.selected{background:rgba(244,196,48,.12);border-color:var(--gold);}
+  .player-rank{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);width:24px;flex-shrink:0;text-align:center;}
+  .player-info{flex:1;min-width:0;overflow:visible;}
+  .player-name-row{font-weight:600;font-size:13px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;word-break:break-word;}
+  .player-meta{font-size:11px;color:var(--muted);margin-top:1px;}
+  .player-age-badge{font-size:10px;font-family:'DM Mono',monospace;background:var(--card3);padding:2px 7px;border-radius:4px;color:var(--line);flex-shrink:0;}
+  .player-size-badge{font-size:10px;background:rgba(72,149,239,.15);color:var(--blue);padding:2px 6px;border-radius:3px;flex-shrink:0;font-weight:600;}
+  .draft-action{display:flex;gap:8px;margin-top:10px;}
+
+  /* BOARD */
+  .board-container{overflow-x:auto;}
+  .draft-board{display:grid;gap:6px;min-width:400px;}
+  .board-team-header{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--gold);padding:8px 8px;background:var(--card2);border-radius:8px 8px 0 0;border-bottom:2px solid var(--gold);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .board-picks{display:flex;flex-direction:column;gap:3px;}
+  .board-pick{background:var(--card2);border-radius:5px;padding:5px 8px;font-size:10px;min-height:40px;display:flex;flex-direction:column;justify-content:center;border:1px solid rgba(255,255,255,.04);transition:all .2s;}
+  .board-pick.filled{background:var(--card3);border-color:rgba(82,183,136,.2);}
+  .board-pick.pre-assigned{background:rgba(244,196,48,.06);border-left:3px solid var(--gold);border-color:rgba(244,196,48,.25);}
+  .board-pick.admin-assigned{background:rgba(155,89,182,.06);border-left:3px solid var(--purple);border-color:rgba(155,89,182,.25);}
+  .board-pick.current{border-color:var(--gold);background:rgba(244,196,48,.08);animation:glow 1.5s infinite alternate;}
+  @keyframes glow{from{box-shadow:none}to{box-shadow:0 0 12px rgba(244,196,48,.25)}}
+  .board-pick.board-highlight{border-color:var(--gold)!important;background:rgba(244,196,48,.18)!important;animation:none!important;box-shadow:0 0 14px rgba(244,196,48,.5)!important;}
+  .board-pick.board-dim{opacity:.2;}
+  .pick-round{font-size:9px;color:var(--muted);margin-bottom:1px;}
+  .pick-player{font-weight:600;font-size:10px;}
+  .pick-meta{font-size:9px;color:var(--muted);}
+  .preassigned-header{font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;padding:1px 4px;}
+
+  /* UPNEXT + HISTORY */
+  .next-picks-list{display:flex;flex-direction:column;gap:3px;}
+  .next-pick-item{display:flex;align-items:center;gap:7px;padding:5px 9px;background:var(--card2);border-radius:5px;font-size:11px;border:1px solid rgba(255,255,255,.04);}
+  .next-pick-item.current{background:rgba(244,196,48,.1);border-color:var(--gold);}
+  .npi-num{font-family:'DM Mono',monospace;color:var(--muted);font-size:10px;width:24px;}
+  .npi-name{flex:1;font-weight:500;font-size:11px;}
+  .npi-round{font-size:10px;color:var(--muted);}
+  .history-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+  .history-item{display:flex;align-items:center;gap:7px;padding:4px 8px;background:var(--card2);border-radius:5px;font-size:10px;}
+  .history-pick{font-family:'DM Mono',monospace;color:var(--muted);font-size:9px;width:40px;flex-shrink:0;}
+  .history-team{color:var(--gold);font-weight:600;min-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  /* DONE */
+  .roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;}
+  .roster-card{background:var(--card2);border-radius:var(--radius);border:1px solid rgba(255,255,255,.08);overflow:hidden;}
+  .roster-card-header{background:linear-gradient(135deg,var(--grass),var(--pitch));padding:14px;border-bottom:2px solid var(--gold);}
+  .roster-card-coach{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2px;color:var(--gold);}
+  .roster-card-meta{font-size:11px;color:var(--muted);}
+  .roster-player-item{display:flex;align-items:center;gap:9px;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
+  .roster-player-item:last-child{border-bottom:none;}
+  .roster-pick-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);width:50px;flex-shrink:0;}
+  .roster-player-name{flex:1;font-weight:500;}
+  .roster-player-age{font-size:11px;color:var(--muted);}
+
+  /* ALERTS + BADGES */
+  .alert{padding:11px 15px;border-radius:8px;font-size:13px;margin-bottom:14px;display:flex;align-items:flex-start;gap:9px;line-height:1.5;}
+  .alert-info{background:rgba(72,149,239,.15);border:1px solid rgba(72,149,239,.3);color:var(--blue);}
+  .alert-warn{background:rgba(244,196,48,.12);border:1px solid rgba(244,196,48,.3);color:var(--gold);}
+  .alert-success{background:rgba(82,183,136,.15);border:1px solid rgba(82,183,136,.3);color:var(--line);}
+  .alert-purple{background:rgba(155,89,182,.12);border:1px solid rgba(155,89,182,.3);color:#c39bd3;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+  .badge-green{background:rgba(82,183,136,.2);color:var(--line);}
+  .badge-gold{background:rgba(244,196,48,.2);color:var(--gold);}
+  .badge-purple{background:rgba(155,89,182,.2);color:#c39bd3;}
+  .divider{border:none;border-top:1px solid rgba(255,255,255,.08);margin:16px 0;}
+  .tip{font-size:11px;color:var(--muted);margin-top:4px;}
+
+  /* MODALS */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px);}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:26px;max-width:520px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,.6);}
+  .modal h2{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--gold);margin-bottom:4px;}
+  .modal-sub{font-size:12px;color:var(--muted);margin-bottom:18px;}
+  .assign-player-list{max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin:10px 0;}
+  .assign-player-row{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--card2);border-radius:8px;border:1px solid rgba(255,255,255,.05);cursor:pointer;transition:all .15s;}
+  .assign-player-row:hover{background:var(--card3);border-color:var(--purple);}
+  .assign-player-row.selected{background:rgba(155,89,182,.15);border-color:var(--purple);}
+
+  /* PLAYER DETAIL */
+  .player-detail{background:var(--card3);border:1px solid var(--gold);border-radius:var(--radius);padding:12px;margin-bottom:10px;display:none;}
+  .player-detail.open{display:block;}
+  .player-detail-name{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:2px;margin-bottom:7px;}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:11px;}
+  .detail-item .dk{color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:1px;}
+  .detail-item .dv{font-weight:600;margin-top:2px;}
+
+  .stats-row{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+  .stat-pill{background:var(--card2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:80px;}
+  .stat-num{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);line-height:1;}
+  .stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+  .coach-add-row{display:flex;gap:8px;margin-bottom:10px;}
+  .coach-add-row input{flex:1;}
+  .filter-btns{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+  .filter-btn{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,.12);background:transparent;color:var(--muted);transition:all .15s;text-transform:uppercase;}
+  .filter-btn:hover{border-color:var(--gold);color:var(--gold);}
+  .filter-btn.active{background:var(--gold);color:#0a1a0f;border-color:var(--gold);}
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}
+  .flex-between{display:flex;align-items:center;justify-content:space-between;}
+  .flex-gap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .mb-12{margin-bottom:12px;}
+  .mb-16{margin-bottom:16px;}
+  .mt-12{margin-top:12px;}
+  .empty-state{text-align:center;padding:28px 16px;color:var(--muted);font-size:13px;}
+  .empty-state .es-icon{font-size:32px;margin-bottom:8px;}
+  .history-modal-list{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;}
+  .history-entry{background:var(--card2);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px 16px;cursor:pointer;transition:all .15s;}
+  .history-entry:hover{border-color:var(--gold);background:var(--card3);}
+  .history-entry-title{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:1.5px;color:var(--gold);}
+  .history-entry-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+
+  .save-indicator{font-size:11px;color:var(--line);opacity:0;transition:opacity .5s;}
+  .panel-expand-btn{background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px;transition:all .15s;flex-shrink:0;}
+  .panel-expand-btn:hover{color:var(--gold);background:rgba(244,196,48,.1);}
+  .panel-fullscreen-overlay{position:fixed;inset:0;z-index:500;background:#0a1a0f;display:flex;flex-direction:column;padding:0;}
+  .panel-fullscreen-header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:#0f2618;border-bottom:2px solid var(--gold);flex-shrink:0;}
+  .panel-fullscreen-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--gold);}
+  .panel-fullscreen-body{flex:1;overflow-y:auto;padding:24px 40px;}
+  .edit-player-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .pool-edit-btn{background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:1px 4px;border-radius:3px;transition:all .15s;flex-shrink:0;}
+  .pool-edit-btn:hover{color:#74b9ff;}
+  .pool-delete-btn{background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:1px 4px;border-radius:3px;transition:all .15s;flex-shrink:0;}
+  .pool-delete-btn:hover{color:var(--danger);}
+  .reorder-row{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:12px 16px;cursor:grab;transition:all .15s;margin-bottom:8px;user-select:none;}
+  .reorder-row:hover{border-color:var(--gold);background:var(--card3);}
+  .reorder-row.drag-over-top{border-top:2px solid var(--gold);}
+  .reorder-row.drag-over-bot{border-bottom:2px solid var(--gold);}
+  .reorder-row.dragging{opacity:.4;}
+  .reorder-num{width:28px;height:28px;border-radius:50%;background:var(--gold);color:#0a1a0f;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .reorder-name{flex:1;font-weight:600;font-size:15px;}
+  .reorder-grip{color:var(--muted);font-size:18px;cursor:grab;}
+  .auto-toggle{font-size:10px;font-weight:700;font-family:'Inter',sans-serif;letter-spacing:.5px;text-transform:uppercase;border-radius:12px;padding:2px 8px;cursor:pointer;border:1.5px solid;transition:all .2s;flex-shrink:0;}
+  .auto-toggle.off{background:transparent;border-color:rgba(255,255,255,.15);color:var(--muted);}
+  .auto-toggle.on{background:rgba(82,183,136,.2);border-color:var(--line);color:var(--line);}
+  .auto-pick-preview{background:linear-gradient(135deg,rgba(82,183,136,.15),rgba(82,183,136,.05));border:1.5px solid var(--line);border-radius:var(--radius);padding:12px 16px;margin-bottom:10px;display:none;}
+  .auto-pick-preview.show{display:block;animation:fadeInDown .3s ease;}
+  @keyframes fadeInDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  .auto-pick-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--line);font-weight:700;margin-bottom:4px;}
+  .auto-pick-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--text);}
+  .auto-pick-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+  .auto-pick-countdown{font-size:28px;font-weight:800;color:var(--line);float:right;margin-top:-30px;}
+  .post-draft-badge{font-size:9px;background:rgba(255,165,0,.25);color:#ffa500;padding:2px 6px;border-radius:3px;font-weight:700;flex-shrink:0;border:1px solid rgba(255,165,0,.4);}
+  .div-settings-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);}
+  .div-settings-row:last-child{border-bottom:none;}
+  .div-key-badge{font-family:'DM Mono',monospace;font-size:11px;background:var(--card3);padding:2px 8px;border-radius:4px;color:var(--muted);flex-shrink:0;}
+  .save-indicator.show{opacity:1;}
+  .admin-badge{font-size:9px;background:rgba(155,89,182,.25);color:#c39bd3;padding:1px 5px;border-radius:3px;font-weight:700;flex-shrink:0;}
+  .manual-badge{font-size:9px;background:rgba(72,199,142,.2);color:#48c78e;padding:1px 5px;border-radius:3px;font-weight:700;flex-shrink:0;}
+  .core-badge{font-size:10px;background:rgba(72,149,239,.15);color:#74b9ff;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+  .add-player-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
+  .add-player-form .field{margin-bottom:0;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-ball">⚽</div>
+      <div class="logo-text"><h1>Draft Central</h1><span>EBSC Fall 2026</span></div>
+    </div>
+    <div class="header-nav" id="div-tab-nav"></div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="save-indicator" id="saveIndicator">✓ Saved</span>
+      <button onclick="openHistoryModal()" style="background:transparent;border:1.5px solid rgba(255,255,255,.15);color:var(--muted);border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:1px;text-transform:uppercase;">📋 History</button>
+      <div style="font-size:12px;color:var(--muted);"><div id="headerStatus">No files loaded</div></div>
+    </div>
+  </header>
+  <main>
+    <div id="app-u9" class="div-app"></div>
+    <div id="app-u10" class="div-app" style="display:none"></div>
+    <div id="app-u1112" class="div-app" style="display:none"></div>
+  </main>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal" style="max-width:620px;">
+    <h2>📋 Draft History</h2>
+    <p class="modal-sub">All finalized drafts are saved automatically. Click any entry to view that roster.</p>
+    <div class="history-modal-list" id="historyList"></div>
+    <div id="historyEmpty" style="text-align:center;padding:32px;color:var(--muted);display:none;">
+      <div style="font-size:32px;margin-bottom:8px;">📭</div>No completed drafts saved yet.
+    </div>
+    <div style="display:flex;gap:10px;justify-content:space-between;margin-top:16px;">
+      <button class="btn btn-danger btn-sm" onclick="clearHistory()">🗑 Clear All History</button>
+      <button class="btn btn-outline btn-sm" onclick="closeHistoryModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <h2 id="confirmTitle">Confirm</h2>
+    <p id="confirmMsg" style="color:var(--muted);font-size:13px;margin-bottom:18px;"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline btn-sm" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-gold btn-sm" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- DIVISION SETTINGS MODAL -->
+<div class="modal-overlay" id="divSettingsModal">
+  <div class="modal" style="max-width:560px;">
+    <h2>⚙️ Division Settings</h2>
+    <p class="modal-sub">Rename divisions, add new ones, or remove existing ones. Removed divisions can be reinstated from their last snapshot.</p>
+    <div id="div-settings-list"></div>
+    <div style="border-top:1px solid rgba(255,255,255,.1);margin-top:14px;padding-top:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--line);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Add New Division</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:120px;margin:0;"><div class="label">Division Key</div><input type="text" id="new-div-key" placeholder="e.g. u13" style="font-family:'DM Mono',monospace;"></div>
+        <div class="field" style="flex:1;min-width:120px;margin:0;"><div class="label">Label</div><input type="text" id="new-div-label" placeholder="e.g. U13"></div>
+        <div class="field" style="width:80px;margin:0;"><div class="label">Teams</div><input type="number" id="new-div-teams" value="4" min="2" max="16" style="width:100%;"></div>
+        <button class="btn btn-outline btn-sm" onclick="addDivision()" style="border-color:var(--line);color:var(--line);white-space:nowrap;">+ Add</button>
+      </div>
+      <div id="new-div-error" style="color:var(--danger);font-size:12px;margin-top:6px;display:none;"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-outline btn-sm" onclick="closeDivSettings()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- POST-DRAFT ADD PLAYER MODAL -->
+<div class="modal-overlay" id="postAddPlayerModal">
+  <div class="modal" style="max-width:620px;">
+    <h2>📋 Post-Draft Add Player</h2>
+    <p class="modal-sub">Add a player directly to a finalized roster. They get a Post-Draft badge. Add as many as needed, then click Commit Version to save a new history entry.</p>
+    <div class="add-player-form">
+      <div class="field"><div class="label">First Name <span style="color:var(--danger);">*</span></div><input type="text" id="pap-firstName" placeholder="Required"></div>
+      <div class="field"><div class="label">Last Name <span style="color:var(--danger);">*</span></div><input type="text" id="pap-lastName" placeholder="Required"></div>
+      <div class="field"><div class="label">Division</div><input type="text" id="pap-division" placeholder="e.g. U9"></div>
+      <div class="field"><div class="label">Birthdate</div><input type="text" id="pap-birthdate" placeholder="MM/DD/YYYY"></div>
+      <div class="field"><div class="label">Email</div><input type="text" id="pap-email"></div>
+      <div class="field"><div class="label">Shirt Size</div><input type="text" id="pap-shirtSize" placeholder="YM, YL..."></div>
+      <div class="field"><div class="label">Seasons</div><input type="text" id="pap-seasons"></div>
+      <div class="field"><div class="label">Position</div><input type="text" id="pap-position"></div>
+      <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="pap-rating" min="1" max="5" style="width:100%;"></div>
+      <div class="field"><div class="label">Core</div><input type="text" id="pap-core"></div>
+      <div class="field"><div class="label">Prior Coach</div><input type="text" id="pap-priorCoach"></div>
+    </div>
+    <div class="field" style="margin-top:10px;">
+      <div class="label">Assign to Team <span style="color:var(--danger);">*</span></div>
+      <select id="pap-teamSelect" style="width:100%;">
+        <option value="">— Select a team —</option>
+      </select>
+    </div>
+    <div id="pap-error" style="color:var(--danger);font-size:12px;margin-top:6px;display:none;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-outline btn-sm" onclick="closePostAddPlayer()">Cancel</button>
+      <button class="btn btn-outline btn-sm" onclick="submitPostAddPlayer(true)" style="border-color:rgba(255,165,0,.5);color:#ffa500;">➕ Add &amp; Add Another</button>
+      <button class="btn btn-gold btn-sm" onclick="submitPostAddPlayer(false)">➕ Add Player</button>
+    </div>
+  </div>
+</div>
+
+<!-- REORDER DRAFT MODAL -->
+<div class="modal-overlay" id="reorderModal">
+  <div class="modal" style="max-width:520px;">
+    <h2>↕ Reorder Draft Positions</h2>
+    <p class="modal-sub">Drag coaches to change who picks in what position going forward. Completed picks are not affected.</p>
+    <div id="reorder-list"></div>
+    <div id="reorder-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;display:none;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-outline btn-sm" onclick="closeReorderModal()">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="confirmReorder()">✅ Apply New Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PLAYER MODAL -->
+<div class="modal-overlay" id="editPlayerModal">
+  <div class="modal" style="max-width:620px;">
+    <h2>✏️ Edit Player</h2>
+    <p class="modal-sub">Edit this player's details. Changes apply immediately to the pool and export.</p>
+    <div class="edit-player-grid">
+      <div class="field"><div class="label">First Name <span style="color:var(--danger);">*</span></div><input type="text" id="ep-firstName" placeholder="Required"></div>
+      <div class="field"><div class="label">Last Name <span style="color:var(--danger);">*</span></div><input type="text" id="ep-lastName" placeholder="Required"></div>
+      <div class="field"><div class="label">Division</div><input type="text" id="ep-division" placeholder="e.g. U9"></div>
+      <div class="field"><div class="label">Birthdate</div><input type="text" id="ep-birthdate" placeholder="MM/DD/YYYY"></div>
+      <div class="field"><div class="label">Email</div><input type="text" id="ep-email"></div>
+      <div class="field"><div class="label">Shirt Size</div><input type="text" id="ep-shirtSize" placeholder="YM, YL..."></div>
+      <div class="field"><div class="label">Seasons</div><input type="text" id="ep-seasons"></div>
+      <div class="field"><div class="label">Position</div><input type="text" id="ep-position"></div>
+      <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="ep-rating" min="1" max="5" style="width:100%;"></div>
+      <div class="field"><div class="label">Core (Coach Name)</div><input type="text" id="ep-core"></div>
+      <div class="field"><div class="label">Prior Coach</div><input type="text" id="ep-priorCoach"></div>
+    </div>
+    <div id="ep-error" style="color:var(--danger);font-size:12px;margin-top:6px;display:none;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-outline btn-sm" onclick="closeEditPlayerModal()">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="submitEditPlayer()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PLAYER MODAL -->
+<div class="modal-overlay" id="addPlayerModal">
+  <div class="modal" style="max-width:620px;">
+    <h2>➕ Add Player to Pool</h2>
+    <p class="modal-sub">Manually add a player to the draft pool. They will be ranked and drafted like any other player. Only First Name and Last Name are required.</p>
+    <div class="add-player-form">
+      <div class="field"><div class="label">Division</div><input type="text" id="ap-division" placeholder="e.g. U9"></div>
+      <div class="field"><div class="label">First Name <span style="color:var(--danger);">*</span></div><input type="text" id="ap-firstName" placeholder="Required"></div>
+      <div class="field"><div class="label">Last Name <span style="color:var(--danger);">*</span></div><input type="text" id="ap-lastName" placeholder="Required"></div>
+      <div class="field"><div class="label">Birthdate</div><input type="text" id="ap-birthdate" placeholder="MM/DD/YYYY"></div>
+      <div class="field"><div class="label">Email</div><input type="text" id="ap-email" placeholder="parent@email.com"></div>
+      <div class="field"><div class="label">Shirt Size</div><input type="text" id="ap-shirtSize" placeholder="e.g. YM, YL"></div>
+      <div class="field"><div class="label">Seasons</div><input type="text" id="ap-seasons" placeholder="e.g. 2"></div>
+      <div class="field"><div class="label">WorkBond</div><input type="text" id="ap-workBond" placeholder=""></div>
+      <div class="field"><div class="label">Position</div><input type="text" id="ap-position" placeholder="e.g. Forward"></div>
+      <div class="field"><div class="label">Rating (1–5)</div><input type="number" id="ap-rating" placeholder="1–5" min="1" max="5" style="width:100%;"></div>
+      <div class="field"><div class="label">Prior Coach</div><input type="text" id="ap-priorCoach" placeholder="Prior coach name if applicable"></div>
+      <div class="field" style="grid-column:1/-1;"><div class="label">Core (Coach Name)</div><input type="text" id="ap-core" placeholder="Coach name if applicable"></div>
+    </div>
+    <div id="ap-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;display:none;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-outline btn-sm" onclick="closeAddPlayerModal()">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="submitAddPlayer()">➕ Add to Pool</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN ASSIGN MODAL (used during draft) -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal" style="max-width:580px;">
+    <h2>🛡️ Admin Assign</h2>
+    <p class="modal-sub">Assign any available player to any team, out of draft order. Snake draft resumes from where it left off.</p>
+    <div class="field">
+      <div class="label">Search Player</div>
+      <input type="text" id="adminSearchInput" placeholder="Type name..." oninput="filterAdminPlayers()">
+    </div>
+    <div class="assign-player-list" id="adminPlayerList"></div>
+    <div id="adminPlayerSelected" style="display:none;margin-top:4px;">
+      <div class="alert alert-purple" id="adminSelectedAlert"></div>
+      <div class="field">
+        <div class="label">Assign to Team</div>
+        <select id="adminTeamSelect" onchange="checkAdminReady()">
+          <option value="">— Select a team —</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-outline btn-sm" onclick="closeAdminModal()">Cancel</button>
+      <button class="btn btn-purple btn-sm" id="adminAssignBtn" disabled onclick="confirmAdminAssign()">⚡ Assign Player</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== CONSTANTS =====================
+const SIZE_ORDER=['YXS','YS','YM','YL','YXL','AS','AM','AL','AXL','AXXL','XS','S','M','L','XL','XXL','XXXL'];
+function sizeRank(s){if(!s)return -1;const n=String(s).toUpperCase().replace(/\s/g,'');const i=SIZE_ORDER.indexOf(n);return i>=0?i:-1;}
+let DIV_CONFIG={u9:{label:'U9',teams:4},u10:{label:'U10',teams:4},u1112:{label:'U11/12',teams:8}};
+
+// ===================== STATE =====================
+function freshDiv(k){
+  return{divKey:k,phase:'upload',players:[],coaches:[],
+    preAssigns:[],   // [{playerId, teamIdx}] — set in Setup before draft
+    picks:[],draftOrder:[],currentPick:0,history:[],autoCoaches:new Set(),
+    timerEnabled:false,timerSeconds:60,timerRemaining:0,timerInterval:null,
+    selectedPlayer:null,searchQuery:'',poolSort:'rank',
+    setupSelectedPlayerId:null // for setup pre-assign panel
+  };
+}
+const state={currentDiv:'u9',divs:{u9:freshDiv('u9'),u10:freshDiv('u10'),u1112:freshDiv('u1112')},removedDivs:{}};
+
+// admin modal context — stored separately so confirm callback can safely reference it
+let adminCtx={divKey:null,selectedPlayerId:null,selectedTeamIdx:null};
+
+// ===================== STORAGE KEYS + SAVE GUARD (defined early so all functions can use) =====================
+const STORAGE_KEY='ebsc-draft-state-v1';
+const HISTORY_KEY='ebsc-draft-history-v1';
+let _saving=false;
+function safeSave(){
+  if(_saving)return;
+  _saving=true;
+  try{saveState();}finally{_saving=false;}
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  // First init all divs to upload state
+  renderDivTabs();
+  Object.keys(DIV_CONFIG).forEach(d=>{const el=document.getElementById(`app-${d}`);if(el){el.innerHTML=buildUpload(d);bindDrop(d);}});
+  updateHeaderStatus();
+
+  // Try to restore saved state
+  const restored=loadSavedState();
+  if(restored){
+    Object.keys(DIV_CONFIG).forEach(dk=>{
+      const d=state.divs[dk];
+      if(!d.players||!d.players.length)return;
+      // Ensure app element exists (may be a dynamically added division)
+      let appEl=document.getElementById('app-'+dk);
+      if(!appEl){
+        appEl=document.createElement('div');
+        appEl.className='div-app';
+        appEl.id='app-'+dk;
+        appEl.style.display='none';
+        document.querySelector('main').appendChild(appEl);
+      }
+      // Mark tab as loaded
+      document.getElementById(`tab-${dk}`).classList.add('loaded');
+      // Restore the right phase
+      if(d.phase==='done'){renderDone(dk);}
+      else if(d.phase==='draft'){renderDraft(dk);}
+      else if(d.phase==='setup'||d.phase==='setup-ready'){renderSetup(dk);}
+      // else stays on upload with data loaded (proceed button enabled)
+      else{
+        document.getElementById(`app-${dk}`).innerHTML=buildUpload(dk);
+        bindDrop(dk);
+        // Restore players into preview
+        showUploadPreview(dk,d.players);
+        const btn=document.getElementById(`proceed-btn-${dk}`);
+        if(btn)btn.disabled=false;
+        const st=document.getElementById(`upload-status-${dk}`);
+        if(st){st.style.display='';st.textContent=`${d.players.length} players loaded`;}
+        document.getElementById(`dropzone-${dk}`)?.classList.add('loaded');
+      }
+    });
+    updateHeaderStatus();
+    // Switch to the last active div
+    if(state.currentDiv)switchDiv(state.currentDiv);
+  }
+});
+
+function renderDivTabs(){
+  const nav=document.getElementById('div-tab-nav');
+  if(!nav)return;
+  nav.innerHTML=Object.keys(DIV_CONFIG).map(dk=>{
+    const d=state.divs[dk];
+    const loaded=d&&d.players&&d.players.length>0;
+    return`<button class="div-tab ${state.currentDiv===dk?'active':''} ${loaded?'loaded':''}" onclick="switchDiv('${dk}')" id="tab-${dk}">${esc(DIV_CONFIG[dk].label)}</button>`;
+  }).join('')+
+  `<button onclick="openDivSettings()" style="background:transparent;border:1.5px solid rgba(255,255,255,.12);color:var(--muted);border-radius:8px;padding:7px 12px;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:1px;" title="Division Settings">⚙️</button>`;
+}
+
+function switchDiv(d){
+  state.currentDiv=d;
+  renderDivTabs();
+  document.querySelectorAll('.div-app').forEach(a=>a.style.display='none');
+  const appEl=document.getElementById(`app-${d}`);
+  if(appEl)appEl.style.display='';
+}
+
+// ===================== UPLOAD =====================
+function buildUpload(dk){
+  const cfg=DIV_CONFIG[dk];
+  return`<div>
+    <div style="margin-bottom:20px;text-align:center;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:3px;color:var(--gold);margin-bottom:4px;">${cfg.label} Division</div>
+      <div style="color:var(--muted);font-size:13px;">${cfg.teams} teams · Snake draft · Load your roster file to begin</div>
+    </div>
+    <div class="card mb-16" style="max-width:680px;margin-left:auto;margin-right:auto;">
+      <div class="card-header"><span class="card-title">📂 Load Roster File</span><span class="badge badge-gold">${cfg.teams} Teams</span></div>
+      <div class="card-body">
+        <div class="alert alert-info">ℹ️ Columns (in order): Division · First Name · Last Name · Birth Date · Parent Email · Jersey Size · Parent Is Coach · Prior Coach</div>
+        <label class="upload-zone" id="dropzone-${dk}">
+          <input type="file" accept=".xlsx,.xls,.csv" onchange="handleFile(event,'${dk}')">
+          <div class="upload-icon">📋</div>
+          <div class="upload-div-label">${cfg.label} Roster</div>
+          <div class="upload-sub">Click or drag & drop Excel / CSV</div>
+          <div id="upload-status-${dk}" class="upload-count" style="display:none"></div>
+        </label>
+        <div id="upload-preview-${dk}" style="margin-top:14px;"></div>
+        <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;">
+          <button class="btn btn-gold" onclick="proceedSetup('${dk}')" id="proceed-btn-${dk}" disabled style="width:100%;justify-content:center;">Continue to Setup →</button>
+          <button onclick="printRoster('${dk}')" id="print-btn-${dk}" disabled style="background:rgba(82,183,136,.15);border:1.5px solid var(--line);color:var(--line);border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:1px;text-transform:uppercase;width:100%;">🖨 Export Draft Sheet (Print-Ready Excel)</button>
+          <button onclick="loadTestData('${dk}')" style="background:rgba(155,89,182,.15);border:1.5px solid var(--purple);color:#c39bd3;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:1px;text-transform:uppercase;width:100%;">🧪 Load Test Data (50 players)</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function bindDrop(dk){
+  const z=document.getElementById(`dropzone-${dk}`);if(!z)return;
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag-over');});
+  z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));
+  z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)parseFile(f,dk);});
+}
+function handleFile(e,dk){const f=e.target.files[0];if(f)parseFile(f,dk);}
+
+// Detect columns by header name — flexible order
+function mapHeaders(hdr){
+  const idx={};
+  const aliases={
+    division:['division'],
+    firstName:['first name','firstname'],
+    lastName:['last name','lastname'],
+    birthDate:['birthdate','birth date','dob'],
+    email:['email','e-mail','parent email'],
+    jerseySize:['shirt size','jersey size','shirt','size'],
+    seasons:['seasons','season'],
+    workBond:['workbond','work bond'],
+    position:['position','pos'],
+    rating:['rating'],
+    coachNotes:['4 core','coach name'],
+    priorCoach:['priorcoach','prior coach'],
+    notes:['notes']
+  };
+  hdr.forEach((h,i)=>{
+    const norm=String(h||'').toLowerCase().trim();
+    for(const[field,list]of Object.entries(aliases)){
+      if(!(field in idx)&&list.some(a=>norm.includes(a)))idx[field]=i;
+    }
+  });
+  return idx;
+}
+
+function parseFile(file,dk){
+  const r=new FileReader();
+  r.onload=function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,dateNF:'yyyy-mm-dd'});
+      if(rows.length<2)throw new Error('File appears empty');
+      const idx=mapHeaders(rows[0]);
+      const get=(row,f)=>idx[f]!==undefined?s(row[idx[f]]):'';
+      const players=[];
+      for(let i=1;i<rows.length;i++){
+        const row=rows[i];if(!row||row.every(c=>!c))continue;
+        const p={
+          id:i,
+          division:get(row,'division'),
+          firstName:get(row,'firstName'),
+          lastName:get(row,'lastName'),
+          birthDate:parseDOB(get(row,'birthDate')),
+          email:get(row,'email'),
+          jerseySize:get(row,'jerseySize').toUpperCase(),
+          seasons:get(row,'seasons'),
+          workBond:get(row,'workBond'),
+          position:get(row,'position'),
+          rating:parseFloat(get(row,'rating'))||99,
+          core:get(row,'coachNotes'),
+          priorCoach:get(row,'priorCoach'),
+          notes:get(row,'notes'),
+          drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null
+        };
+        if(p.firstName||p.lastName)players.push(p);
+      }
+      finalizePlayers(players,dk);
+    }catch(err){alert('Error: '+err.message);}
+  };
+  r.readAsArrayBuffer(file);
+}
+function finalizePlayers(players,dk){
+  players.forEach(p=>{p.ageMs=p.birthDate?Date.now()-p.birthDate.getTime():0;p.ageYears=p.ageMs/(365.25*24*3600*1000);p.ageDays=Math.floor(p.ageMs/(24*3600*1000));});
+  // Sort: rating asc, then age desc, then last name
+  players.sort((a,b)=>{
+    if(a.rating!==b.rating)return a.rating-b.rating;
+    if(b.ageDays!==a.ageDays)return b.ageDays-a.ageDays;
+    return a.lastName.localeCompare(b.lastName);
+  });
+  players.forEach((p,i)=>p.rank=i+1);
+  state.divs[dk].players=players;
+  state.divs[dk].preAssigns=[];
+  showUploadPreview(dk,players);
+  document.getElementById(`proceed-btn-${dk}`).disabled=false;
+  const pb=document.getElementById(`print-btn-${dk}`);if(pb)pb.disabled=false;
+  safeSave();
+  const st=document.getElementById(`upload-status-${dk}`);st.style.display='';st.textContent=`${players.length} players loaded`;
+  document.getElementById(`dropzone-${dk}`).classList.add('loaded');
+  document.getElementById(`tab-${dk}`).classList.add('loaded');
+  updateHeaderStatus();
+}
+
+function s(v){return String(v||'').trim();}
+function parseDOB(v){if(!v)return null;if(v instanceof Date)return v;const sv=String(v).trim();const d=new Date(sv);if(!isNaN(d))return d;const m=sv.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);if(m)return new Date(`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`);return null;}
+function isCoach(v){if(!v)return false;return['yes','y','true','1','coach','x'].includes(String(v).trim().toLowerCase());}
+function fmtAge(p){if(!p.birthDate)return'?';return Math.round(p.ageYears)+'y';}
+function fmtDate(d){if(!d)return'—';return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function showUploadPreview(dk,players){
+  document.getElementById(`upload-preview-${dk}`).innerHTML=`
+    <div class="stats-row">
+      <div class="stat-pill"><div class="stat-num">${players.length}</div><div class="stat-lbl">Players</div></div>
+      <div class="stat-pill"><div class="stat-num">${DIV_CONFIG[dk].teams}</div><div class="stat-lbl">Teams</div></div>
+      <div class="stat-pill"><div class="stat-num">~${Math.ceil(players.length/DIV_CONFIG[dk].teams)}</div><div class="stat-lbl">Est. Rounds</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:7px;">Top 5 by draft rank:</div>
+    <div style="display:flex;flex-direction:column;gap:3px;">
+    ${players.slice(0,5).map(p=>`<div class="player-card-row" style="cursor:default;"><span class="player-rank">#${p.rank}</span><div class="player-info"><div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}</div><div class="player-meta">${fmtAge(p)} · ${p.position||'—'} · ${p.seasons?p.seasons+' seasons':'—'}</div></div><span style="font-size:13px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:3px 9px;border-radius:5px;">★${p.rating===99?'?':`${p.rating}`}</span></div>`).join('')}
+    </div>`;
+}
+
+// ===================== SETUP =====================
+function proceedSetup(dk){
+  state.currentDiv=dk;
+  const d=state.divs[dk];
+  if(!d.coaches.length)d.coaches=Array.from({length:DIV_CONFIG[dk].teams},(_,i)=>({name:`Coach ${i+1}`}));
+  d.setupSelectedPlayerId=null;
+  renderSetup(dk);
+}
+
+function renderSetup(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  const coachRows=d.coaches.map((c,i)=>`
+    <div class="coach-row" draggable="true" ondragstart="dragStart(event,'${dk}',${i})" ondragover="dragOver(event)" ondrop="doDrop(event,'${dk}',${i})" ondragend="dragEnd(event)">
+      <span class="drag-handle">⠿</span>
+      <span class="coach-order">${i+1}</span>
+      <input type="text" value="${esc(c.name)}" onchange="updateCoach('${dk}',${i},this.value)" style="max-width:180px;" placeholder="Coach name">
+      <button class="btn btn-outline btn-xs" onclick="removeCoach('${dk}',${i})" style="margin-left:auto;">✕</button>
+    </div>`).join('');
+
+  // Pre-assign pool: players not yet pre-assigned
+  const preAssignedIds=new Set(d.preAssigns.map(a=>a.playerId));
+  const poolPlayers=d.players.filter(p=>!preAssignedIds.has(p.id));
+  const poolHtml=poolPlayers.length?poolPlayers.map(p=>`
+    <div class="pa-player-row ${d.setupSelectedPlayerId===p.id?'selected':''}" onclick="setupSelectPlayer('${dk}',${p.id})">
+      <span class="player-rank">#${p.rank}</span>
+      <div class="player-info">
+        <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.core?' · <span style="color:#74b9ff;font-weight:600;">⚽ '+esc(p.core)+'</span>':''}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">👤 '+esc(p.priorCoach)+'</span>':''}</div>
+      </div>
+      <span style="font-size:12px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:2px 8px;border-radius:4px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
+    </div>`).join(''):`<div class="empty-state" style="padding:20px;"><div>✅</div>All players assigned</div>`;
+
+  // Per-team pre-assign blocks
+  const teamBlocks=d.coaches.map((c,ti)=>{
+    const myAssigns=d.preAssigns.filter(a=>a.teamIdx===ti);
+    return`<div class="pa-team-block">
+      <div class="pa-team-header">
+        <span class="pa-team-name">${esc(c.name)}</span>
+        <span class="badge badge-gold">${myAssigns.length}</span>
+      </div>
+      ${myAssigns.length?myAssigns.map(a=>{
+        const p=d.players.find(pl=>pl.id===a.playerId);
+        return`<div class="pa-player-entry">
+          <div style="flex:1;">${esc(p?.firstName)} ${esc(p?.lastName)}</div>
+          <span style="color:var(--muted);font-size:10px;">${p?.jerseySize||'?'}</span>
+          <button class="btn btn-danger btn-xs" onclick="removePreAssign('${dk}',${a.playerId})" style="margin-left:6px;">✕</button>
+        </div>`}).join(''):`<div class="pa-empty">No pre-assigned players</div>`}
+    </div>`;
+  }).join('');
+
+  const numDraftable=d.players.length-d.preAssigns.length;
+
+  document.getElementById(`app-${dk}`).innerHTML=`
+    <div style="margin-bottom:20px;" class="flex-between">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--gold);">${cfg.label} — Setup</div>
+        <div style="color:var(--muted);font-size:13px;">${d.players.length} players · ${cfg.teams} teams · ${numDraftable} draftable</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('app-${dk}').innerHTML=buildUpload('${dk}');bindDrop('${dk}')">← Back</button>
+    </div>
+
+    <div class="setup-cols">
+      <!-- LEFT: coaches + settings -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🏆 Coaches & Order</span>
+            <button class="btn btn-outline btn-sm" onclick="randomizeDraftOrder('${dk}')" id="rand-btn-${dk}" ${d.coaches.length<2?'disabled':''} style="border-color:var(--gold);color:var(--gold);">🎲 Randomize</button>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info mb-12" style="font-size:12px;">Drag to reorder. #1 picks first in round 1. Use 🎲 to randomly assign order.</div>
+            <div id="rand-result-${dk}"></div>
+            <div class="coach-list">${coachRows}</div>
+            <div class="coach-add-row mt-12">
+              <input type="text" id="new-coach-${dk}" placeholder="Coach name..." onkeydown="if(event.key==='Enter')addCoach('${dk}')">
+              <button class="btn btn-outline btn-sm" onclick="addCoach('${dk}')">+ Add</button>
+            </div>
+            <div class="tip">Need exactly ${cfg.teams} coaches to start.</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">⚙️ Settings</span></div>
+          <div class="card-body">
+            <div class="field">
+              <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="timer-en-${dk}" onchange="toggleTimer('${dk}')"> Draft timer per pick
+              </label>
+            </div>
+            <div class="field" id="timer-sec-wrap-${dk}" style="display:none;">
+              <div class="label">Seconds per pick</div>
+              <input type="number" id="timer-sec-${dk}" value="60" min="10" max="300" style="max-width:100px;">
+            </div>
+            <div class="divider"></div>
+            <div style="font-size:12px;color:var(--muted);">~${Math.ceil(numDraftable/cfg.teams)} rounds · ${numDraftable} draftable players</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: pre-assign panel -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">⭐ Pre-Draft Assignments</span>
+          <span class="badge badge-gold">${d.preAssigns.length} assigned</span>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info mb-12" style="font-size:12px;">Select a player from the left list, then click a team button to assign them before the draft starts. They will be removed from the draft pool.</div>
+          <div class="preassign-layout">
+            <div>
+              <div class="label">Available Players (${poolPlayers.length})</div>
+              <div style="margin-bottom:8px;">
+                <input type="text" id="setup-search-${dk}" placeholder="Search..." oninput="renderSetupPool('${dk}')" style="font-size:12px;">
+              </div>
+              <div class="preassign-pool" id="setup-pool-${dk}">${poolHtml}</div>
+            </div>
+            <div>
+              <div class="label" style="margin-bottom:8px;">Assign Selected To:</div>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+                ${d.coaches.map((c,ti)=>`
+                  <button class="btn btn-outline btn-sm" onclick="addPreAssign('${dk}',${ti})" style="justify-content:flex-start;gap:8px;">
+                    <span class="coach-order" style="width:20px;height:20px;font-size:10px;">${ti+1}</span>
+                    ${esc(c.name)}
+                    <span class="badge badge-gold" style="margin-left:auto;">${d.preAssigns.filter(a=>a.teamIdx===ti).length}</span>
+                  </button>`).join('')}
+              </div>
+              <div class="divider"></div>
+              <div class="label" style="margin-bottom:8px;">Pre-Assigned Rosters</div>
+              <div class="pa-team-cols">${teamBlocks}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:right;">
+      <button class="btn btn-gold" onclick="startDraft('${dk}')" id="start-draft-${dk}" disabled>🚀 Start Draft →</button>
+    </div>`;
+
+  validateSetup(dk);
+}
+
+function renderSetupPool(dk){
+  const d=state.divs[dk];
+  const preAssignedIds=new Set(d.preAssigns.map(a=>a.playerId));
+  const q=(document.getElementById(`setup-search-${dk}`)?.value||'').toLowerCase();
+  let players=d.players.filter(p=>!preAssignedIds.has(p.id));
+  if(q)players=players.filter(p=>(p.firstName+' '+p.lastName).toLowerCase().includes(q));
+  const el=document.getElementById(`setup-pool-${dk}`);if(!el)return;
+  el.innerHTML=players.length?players.map(p=>`
+    <div class="pa-player-row ${d.setupSelectedPlayerId===p.id?'selected':''}" onclick="setupSelectPlayer('${dk}',${p.id})">
+      <span class="player-rank">#${p.rank}</span>
+      <div class="player-info">
+        <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.core?' · <span style="color:#74b9ff;font-weight:600;">⚽ '+esc(p.core)+'</span>':''}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">👤 '+esc(p.priorCoach)+'</span>':''}</div>
+      </div>
+      <span style="font-size:12px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:2px 8px;border-radius:4px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
+    </div>`).join(''):`<div class="empty-state" style="padding:20px;"><div>✅</div>All players assigned</div>`;
+}
+
+function setupSelectPlayer(dk,id){
+  state.divs[dk].setupSelectedPlayerId=id;
+  document.querySelectorAll(`#setup-pool-${dk} .pa-player-row`).forEach(el=>el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+}
+
+function addPreAssign(dk,teamIdx){
+  const d=state.divs[dk];
+  const pid=d.setupSelectedPlayerId;
+  if(!pid){alert('Select a player from the list first.');return;}
+  if(d.preAssigns.find(a=>a.playerId===pid))return;
+  const coachName=d.coaches[teamIdx]?.name||'';
+  d.preAssigns.push({playerId:pid,teamIdx,coachName});
+  d.setupSelectedPlayerId=null;
+  renderSetup(dk);
+}
+
+function removePreAssign(dk,playerId){
+  const d=state.divs[dk];
+  d.preAssigns=d.preAssigns.filter(a=>a.playerId!==playerId);
+  renderSetup(dk);
+}
+
+function updateCoach(dk,i,v){state.divs[dk].coaches[i].name=v;renderSetup(dk);}
+function addCoach(dk){const inp=document.getElementById(`new-coach-${dk}`);const n=inp.value.trim();if(!n)return;state.divs[dk].coaches.push({name:n});inp.value='';renderSetup(dk);}
+function removeCoach(dk,i){state.divs[dk].coaches.splice(i,1);renderSetup(dk);}
+function toggleTimer(dk){document.getElementById(`timer-sec-wrap-${dk}`).style.display=document.getElementById(`timer-en-${dk}`).checked?'':'none';}
+
+function validateSetup(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  const btn=document.getElementById(`start-draft-${dk}`);if(!btn)return;
+  btn.disabled=!(d.coaches.length===cfg.teams&&d.coaches.every(c=>c.name.trim()));
+  safeSave();
+}
+
+function randomizeDraftOrder(dk){
+  const d=state.divs[dk];
+  if(d.coaches.length<2)return;
+
+  // Fisher-Yates shuffle
+  const arr=[...d.coaches];
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+
+  // Show result banner — don't apply yet until user accepts
+  const banner=document.getElementById(`rand-result-${dk}`);
+  if(!banner)return;
+
+  const listHtml=arr.map((c,i)=>`
+    <div class="rand-order-item" style="animation-delay:${i*60}ms;animation:slideIn .3s ease ${i*60}ms both;">
+      <span class="rand-pick-num">${i+1}</span>
+      <span class="coach-order" style="width:22px;height:22px;font-size:11px;">${i+1}</span>
+      <span style="font-weight:600;">${esc(c.name)}</span>
+      ${i===0?'<span style="font-size:10px;color:var(--gold);margin-left:auto;font-weight:700;">PICKS FIRST</span>':''}
+    </div>`).join('');
+
+  banner.innerHTML=`
+    <div class="rand-banner">
+      <div class="rand-banner-title">🎲 Randomized Draft Order</div>
+      <div class="rand-order-list">${listHtml}</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-gold btn-sm" onclick="acceptRandomOrder('${dk}',${JSON.stringify(arr).replace(/"/g,'&quot;')})">✅ Accept This Order</button>
+        <button class="btn btn-outline btn-sm" onclick="randomizeDraftOrder('${dk}')">🎲 Shuffle Again</button>
+        <button class="btn btn-danger btn-sm" onclick="document.getElementById('rand-result-${dk}').innerHTML=''">✕ Cancel</button>
+      </div>
+    </div>`;
+}
+
+function acceptRandomOrder(dk, arr){
+  state.divs[dk].coaches=arr;
+  syncPreAssignIndices(dk);
+  renderSetup(dk);
+  // Flash each coach row to show the new order
+  setTimeout(()=>{
+    document.querySelectorAll(`#app-${dk} .coach-row`).forEach((el,i)=>{
+      el.style.animation='none';
+      setTimeout(()=>{el.classList.add('just-assigned');},i*80);
+    });
+  },50);
+}
+
+// Sync pre-assign teamIdx values to match current coach array order
+function syncPreAssignIndices(dk){
+  const d=state.divs[dk];
+  d.preAssigns.forEach(a=>{
+    // Find the coach by name in the new order
+    const newIdx=d.coaches.findIndex(c=>c.name===a.coachName);
+    if(newIdx>=0)a.teamIdx=newIdx;
+  });
+}
+
+let dragFrom=null;
+function dragStart(e,dk,i){dragFrom=i;e.currentTarget.classList.add('dragging');}
+function dragOver(e){e.preventDefault();}
+function dragEnd(e){e.currentTarget.classList.remove('dragging');}
+function doDrop(e,dk,to){e.preventDefault();if(dragFrom===null||dragFrom===to)return;const c=state.divs[dk].coaches;const[m]=c.splice(dragFrom,1);c.splice(to,0,m);dragFrom=null;syncPreAssignIndices(dk);renderSetup(dk);}
+
+// ===================== DRAFT ORDER =====================
+function buildSnake(teams,rounds){
+  const order=[];let pick=1;
+  for(let r=1;r<=rounds;r++){const fwd=r%2===1;const ts=fwd?Array.from({length:teams},(_,i)=>i):Array.from({length:teams},(_,i)=>teams-1-i);for(const t of ts)order.push({pickNum:pick++,round:r,teamIdx:t,dir:fwd?'→':'←'});}
+  return order;
+}
+
+// ===================== START DRAFT =====================
+function startDraft(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  const timerEnabled=document.getElementById(`timer-en-${dk}`)?.checked||false;
+  const timerSec=parseInt(document.getElementById(`timer-sec-${dk}`)?.value||'60');
+
+  // Reset player states
+  d.players.forEach(p=>{p.drafted=false;p.draftPick=null;p.draftRound=null;p.draftTeam=null;p.draftType=null;});
+  d.picks=[];d.history=[];d.currentPick=0;d.selectedPlayer=null;d.searchQuery='';
+  d.timerEnabled=timerEnabled;d.timerSeconds=timerSec;d.timerRemaining=timerSec;
+
+  // Apply pre-assigns — resolve by coachName first for safety
+  d.preAssigns.forEach(a=>{
+    const p=d.players.find(pl=>pl.id===a.playerId);
+    if(!p)return;
+    // Resolve teamIdx by name in case order changed
+    if(a.coachName){const ni=d.coaches.findIndex(c=>c.name===a.coachName);if(ni>=0)a.teamIdx=ni;}
+    p.drafted=true;p.draftTeam=d.coaches[a.teamIdx]?.name||'';p.draftType='pre';p.draftRound=0;p.draftPick=0;
+    d.picks.push({pickNum:0,round:0,teamIdx:a.teamIdx,player:p,type:'pre'});
+  });
+
+  const draftable=d.players.filter(p=>!p.drafted);
+  const numRounds=Math.ceil(draftable.length/cfg.teams);
+  d.draftOrder=buildSnake(cfg.teams,numRounds);
+  d.phase='draft';
+  renderDraft(dk);
+  if(timerEnabled)startTimer(dk);
+  safeSave();
+}
+
+// ===================== RENDER DRAFT =====================
+function renderDraft(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  const isDone=d.currentPick>=d.draftOrder.length;
+  const avail=d.players.filter(p=>!p.drafted).length;
+  const curPick=d.draftOrder[d.currentPick];
+  // Schedule auto-pick check after DOM update
+  if(!isDone)setTimeout(()=>checkAutoPickTrigger(dk),50);
+
+  document.getElementById(`app-${dk}`).innerHTML=`
+    <div style="margin-bottom:14px;" class="flex-between">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--gold);">${cfg.label} — Live Draft</div>
+        <div style="color:var(--muted);font-size:12px;">Pick ${Math.min(d.currentPick+1,d.draftOrder.length)} of ${d.draftOrder.length} · ${avail} available</div>
+      </div>
+      <div class="flex-gap">
+        <button class="btn btn-purple btn-sm" onclick="openAdminModal('${dk}')" ${isDone?'disabled':''}>🛡️ Admin Assign</button>
+        <button class="btn btn-outline btn-sm" onclick="openAddPlayerModal('${dk}')" style="border-color:var(--line);color:var(--line);">➕ Add Player</button>
+        <button class="btn btn-outline btn-sm" onclick="undoPick('${dk}')" ${d.history.length===0?'disabled':''}>↩ Undo</button>
+        <button class="btn btn-outline btn-sm" onclick="skipPick('${dk}')" ${isDone?'disabled':''}>⏭ Skip Pick</button>
+        <button class="btn btn-outline btn-sm" onclick="autoComplete('${dk}')" ${isDone?'disabled':''}>⚡ Auto-Draft Rest</button>
+        <button class="btn btn-outline btn-sm" onclick="openReorderModal('${dk}')" ${isDone?'disabled':''} style="border-color:rgba(244,196,48,.5);color:var(--gold);">↕ Reorder</button>
+        <button class="btn btn-outline btn-sm" onclick="addRound('${dk}')" style="border-color:rgba(116,185,255,.5);color:#74b9ff;">➕ Round</button>
+        <button class="btn btn-outline btn-sm" onclick="printRoster('${dk}')" style="border-color:rgba(82,183,136,.5);color:var(--line);" title="Export print-ready draft sheet">🖨 Print Sheet</button>
+        <button class="btn btn-gold" onclick="finalize('${dk}')" style="font-size:14px;padding:10px 28px;${isDone?'animation:glow 1s infinite alternate':'opacity:.8'}">✅ Finalize Draft →</button>
+      </div>
+    </div>
+    <div class="draft-layout">
+
+      <!-- COL 1: Player Pool -->
+      <div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Player Pool</span><div class="flex-gap"><span class="badge badge-green">${avail} left</span><button class="btn btn-sm" onclick="openAddPlayerModal('${dk}')" style="border:1.5px solid var(--line);color:var(--line);background:rgba(82,183,136,.1);padding:4px 10px;font-size:10px;">➕ Add</button><button class="panel-expand-btn" onclick="expandPanel('pool','${dk}')" title="Fullscreen">⛶</button></div></div>
+          <div class="card-body" style="padding:14px;">
+            <div class="search-bar"><span class="search-icon">🔍</span><input type="text" id="search-${dk}" placeholder="Search..." value="${esc(d.searchQuery)}" oninput="updateSearch('${dk}',this.value)"></div>
+            <div class="filter-btns">
+              <button class="filter-btn ${d.poolSort==='rank'?'active':''}" onclick="setSort('${dk}','rank')">Rank</button>
+              <button class="filter-btn ${d.poolSort==='name'?'active':''}" onclick="setSort('${dk}','name')">Name</button>
+            </div>
+            <div id="player-detail-${dk}" class="player-detail"></div>
+            <div class="player-pool-list" id="pool-list-${dk}">${renderPool(dk)}</div>
+            <div class="draft-action">
+              <button class="btn btn-gold" style="flex:1;" onclick="draftSelected('${dk}')" id="draft-btn-${dk}" ${!d.selectedPlayer||isDone?'disabled':''}>⚽ Draft Selected</button>
+              <button class="btn btn-purple btn-sm" onclick="openAdminModal('${dk}')" title="Admin assign" ${isDone?'disabled':''}>🛡️</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COL 2: Clock + Board -->
+      <div>
+        <div class="auto-pick-preview" id="auto-preview-${dk}"><div class="auto-pick-label">⚡ Auto-Drafting in...</div><span class="auto-pick-countdown" id="auto-countdown-${dk}">2</span><div class="auto-pick-name" id="auto-pick-name-${dk}"></div><div class="auto-pick-meta" id="auto-pick-meta-${dk}"></div></div>
+      ${isDone?`<div style="background:linear-gradient(135deg,rgba(244,196,48,.15),rgba(244,196,48,.05));border:2px solid var(--gold);border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:14px;"><div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--gold);margin-bottom:8px;">🏆 Draft Complete!</div><div style="color:var(--muted);font-size:13px;margin-bottom:16px;">${d.picks.length} players assigned · ${d.players.filter(p=>!p.drafted).length} undrafted</div><button class="btn btn-gold" onclick="finalize('${dk}')" style="font-size:15px;padding:14px 40px;">✅ Finalize Draft & View Rosters →</button></div>`:renderClock(dk)}
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 Draft Board</span><button class="panel-expand-btn" onclick="expandPanel('board','${dk}')" title="Fullscreen" style="margin-right:4px;">⛶</button>
+            <div class="flex-gap">
+              ${!isDone?`<span class="badge badge-gold">Round ${curPick.round}</span>`:`<span class="badge badge-green">Complete</span>`}
+              ${d.picks.filter(p=>p.type==='pre').length?`<span class="badge badge-gold">⭐ ${d.picks.filter(p=>p.type==='pre').length} pre</span>`:''}
+              ${d.picks.filter(p=>p.type==='admin').length?`<span class="badge badge-purple">🛡️ ${d.picks.filter(p=>p.type==='admin').length} admin</span>`:''}
+              <div style="position:relative;">
+                <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;">🔍</span>
+                <input type="text" id="board-search-${dk}" placeholder="Find on board..." oninput="boardSearch('${dk}',this.value)"
+                  style="padding:5px 10px 5px 28px;font-size:11px;width:160px;background:var(--card3);border-radius:6px;border:1.5px solid rgba(255,255,255,.1);">
+              </div>
+            </div>
+          </div>
+          <div class="card-body" style="padding:14px;"><div class="board-container" id="board-container-${dk}">${renderBoard(dk)}</div></div>
+        </div>
+      </div>
+
+      <!-- COL 3: Up Next + History -->
+      <div>
+        <div class="card mb-12">
+          <div class="card-header"><span class="card-title">📌 Up Next</span><button class="panel-expand-btn" onclick="expandPanel('upnext','${dk}')" title="Fullscreen">⛶</button></div>
+          <div class="card-body" style="padding:10px;"><div class="next-picks-list">${renderUpNext(dk)}</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">🕒 History</span><div class="flex-gap"><button class="btn btn-danger btn-sm" onclick="undoPick('${dk}')" ${d.history.length===0?'disabled':''}>↩</button><button class="panel-expand-btn" onclick="expandPanel('history','${dk}')" title="Fullscreen">⛶</button></div></div>
+          <div class="card-body" style="padding:10px;"><div class="history-list">${renderHistory(dk)}</div></div>
+        </div>
+      </div>
+
+      <!-- COL 4: Current Team Rosters -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:2px;"><span style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--muted);">TEAM ROSTERS</span><button class="panel-expand-btn" onclick="expandPanel('rosters','${dk}')" title="Fullscreen">⛶</button></div>
+        <div class="all-rosters-scroll">
+          ${renderAllRosters(dk)}
+        </div>
+      </div>
+
+    </div>`;
+}
+
+function renderClock(dk){
+  const d=state.divs[dk];if(d.currentPick>=d.draftOrder.length)return'';
+  const pick=d.draftOrder[d.currentPick];const coach=d.coaches[pick.teamIdx];
+  const pct=d.timerEnabled?(d.timerRemaining/d.timerSeconds*100):100;
+  const urg=d.timerEnabled&&d.timerRemaining<=10;
+  return`<div class="clock-card mb-12">
+    <div class="clock-label">On The Clock</div>
+    <div class="clock-team">${esc(coach?.name||'?')}</div>
+    <div class="clock-meta">Round ${pick.round} · Pick ${pick.pickNum} ${pick.dir}</div>
+    ${d.timerEnabled?`<div class="clock-timer ${urg?'urgent':''}" id="clock-timer-${dk}">${fmtTime(d.timerRemaining)}</div><div class="timer-bar"><div class="timer-fill ${urg?'urgent':''}" id="timer-fill-${dk}" style="width:${pct}%"></div></div>`:''}
+  </div>`;
+}
+function fmtTime(s){return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
+
+function renderAllRosters(dk){
+  const d=state.divs[dk];
+  const curPick=d.draftOrder[d.currentPick];
+  return d.coaches.map((coach,ti)=>{
+    const myPicks=[
+      ...d.picks.filter(p=>p.teamIdx===ti&&p.type==='pre'),
+      ...d.picks.filter(p=>p.teamIdx===ti&&p.type==='admin'),
+      ...d.picks.filter(p=>p.teamIdx===ti&&p.type==='draft').sort((a,b)=>a.pickNum-b.pickNum)
+    ];
+    const isOnClock=curPick&&curPick.teamIdx===ti;
+    return`<div class="team-roster-card" style="${isOnClock?'border-color:var(--gold);box-shadow:0 0 16px rgba(244,196,48,.2);':''}">
+      <div class="team-roster-header" style="${isOnClock?'background:linear-gradient(135deg,#3d6b1a,#2a4a0f);':''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <div class="team-roster-name">${esc(coach.name)}${isOnClock?' 🟡':''}</div>
+          <button class="auto-toggle ${d.autoCoaches.has(ti)?'on':'off'}" onclick="toggleAutoCoach('${dk}',${ti})" title="Toggle auto-draft for this coach">
+            ${d.autoCoaches.has(ti)?'⚡ Auto':'⚡ Auto'}
+          </button>
+        </div>
+        <div class="team-roster-meta">${myPicks.length} player${myPicks.length!==1?'s':''} ${d.autoCoaches.has(ti)?'· Auto-draft ON':''}</div>
+      </div>
+      <div class="team-roster-body">
+        ${myPicks.length?myPicks.map(pk=>`
+          <div class="team-player-row" style="flex-wrap:wrap;">
+            <span class="team-player-badge">${pk.type==='pre'?'⭐':pk.type==='admin'?'🛡️':`R${pk.round}`}</span>
+            <span class="team-player-name">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</span>
+            <span style="font-size:10px;color:var(--gold);font-weight:700;margin-right:2px;">★${pk.player.rating===99?'?':pk.player.rating}</span>
+            <span class="team-player-size">${pk.player.jerseySize||'?'}</span>
+            <button class="move-btn" onclick="openMovePlayer('${dk}',${pk.player.id},event)">↔</button>
+          </div>`).join(''):`<div class="team-empty">No players yet</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderPool(dk){
+  const d=state.divs[dk];
+  let players=d.players.filter(p=>!p.drafted);
+  if(d.searchQuery){const q=d.searchQuery.toLowerCase();players=players.filter(p=>(p.firstName+' '+p.lastName).toLowerCase().includes(q));}
+  if(d.poolSort==='name')players.sort((a,b)=>a.lastName.localeCompare(b.lastName));else players.sort((a,b)=>a.rank-b.rank);
+  if(!players.length)return`<div class="empty-state"><div class="es-icon">✅</div>All players drafted!</div>`;
+  return players.map(p=>`
+    <div class="player-card-row ${d.selectedPlayer?.id===p.id?'selected':''}" onclick="selectPlayer('${dk}',${p.id},event)">
+      <span class="player-rank">#${p.rank}</span>
+      <div class="player-info">
+        <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}${p.manualAdd?'<span class="manual-badge">MANUAL</span>':''}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')} · ${p.seasons?esc(p.seasons)+' seasons':'—'}</div>
+        ${p.core?`<div style="margin-top:2px;"><span class="core-badge">⚽ ${esc(p.core)}</span></div>`:''}
+        ${p.priorCoach?`<div style="margin-top:2px;"><span class="core-badge" style="background:rgba(155,89,182,.15);color:#c39bd3;">👤 Prior Coach: ${esc(p.priorCoach)}</span></div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+        <span style="font-size:13px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:3px 9px;border-radius:5px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
+        <span class="player-size-badge">${p.jerseySize||'?'}</span>
+        <div style="display:flex;gap:2px;">
+          <button class="pool-edit-btn" onclick="event.stopPropagation();openEditPlayer('${dk}',${p.id})" title="Edit">✏️</button>
+          <button class="pool-delete-btn" onclick="event.stopPropagation();deletePlayer('${dk}',${p.id})" title="Delete">🗑</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderBoard(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  const numRounds=d.draftOrder.length>0?d.draftOrder[d.draftOrder.length-1].round:1;
+  const curPick=d.draftOrder[d.currentPick];
+  const regMap={};
+  d.picks.filter(p=>p.type==='draft').forEach(pk=>{regMap[`${pk.teamIdx}-${pk.round}`]=pk;});
+  const cols=d.coaches.map((coach,ti)=>{
+    const prePicks=d.picks.filter(p=>p.teamIdx===ti&&p.type==='pre');
+    const admPicks=d.picks.filter(p=>p.teamIdx===ti&&p.type==='admin');
+    const preSec=prePicks.length?`<div style="margin-bottom:2px;"><div class="preassigned-header" style="color:var(--gold);">⭐ Pre-Assigned</div>${prePicks.map(pk=>`<div class="board-pick pre-assigned" style="min-height:34px;"><div class="pick-player">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</div></div>`).join('')}</div>`:'';
+    const admSec=admPicks.length?`<div style="margin-bottom:2px;"><div class="preassigned-header" style="color:#c39bd3;">🛡️ Admin</div>${admPicks.map(pk=>`<div class="board-pick admin-assigned" style="min-height:34px;"><div class="pick-player">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</div></div>`).join('')}</div>`:'';
+    const rounds=[];
+    for(let r=1;r<=numRounds;r++){
+      const pk=regMap[`${ti}-${r}`];const isCur=curPick&&curPick.teamIdx===ti&&curPick.round===r;
+      rounds.push(`<div class="board-pick ${pk?'filled':''} ${isCur?'current':''}"><div class="pick-round">Rd ${r}</div>${pk?`<div class="pick-player">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</div><div class="pick-meta">${fmtAge(pk.player)} · ${pk.player.jerseySize}</div>`:isCur?`<div style="color:var(--gold);font-size:9px;font-weight:700;">← Picking now</div>`:''}</div>`);
+    }
+    return`<div><div class="board-team-header">${esc(coach.name)}</div><div class="board-picks">${preSec}${admSec}${rounds.join('')}</div></div>`;
+  });
+  return`<div class="draft-board" style="grid-template-columns:repeat(${cfg.teams},minmax(100px,1fr));">${cols.join('')}</div>`;
+}
+
+function renderUpNext(dk){
+  const d=state.divs[dk];
+  const rem=d.draftOrder.slice(d.currentPick,d.currentPick+10);
+  if(!rem.length)return`<div class="empty-state" style="padding:14px;font-size:12px;">🎉 Done!</div>`;
+  return rem.map((o,i)=>`<div class="next-pick-item ${i===0?'current':''}"><span class="npi-num">${o.pickNum}</span><span class="npi-name">${esc(d.coaches[o.teamIdx]?.name||'')}</span><span class="npi-round">R${o.round} ${o.dir}</span></div>`).join('');
+}
+
+function renderHistory(dk){
+  const d=state.divs[dk];
+  const picks=d.picks.filter(p=>p.type!=='pre');
+  if(!picks.length)return`<div style="color:var(--muted);font-size:11px;text-align:center;padding:10px;">No picks yet</div>`;
+  return[...picks].reverse().slice(0,30).map(pk=>`<div class="history-item"><span class="history-pick">${pk.type==='admin'?'🛡️ADM':`R${pk.round}·${pk.pickNum}`}</span><span class="history-team">${esc(d.coaches[pk.teamIdx]?.name||'')}</span><span style="flex:1;">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</span></div>`).join('');
+}
+
+// ===================== TIMER =====================
+function startTimer(dk){
+  const d=state.divs[dk];
+  if(d.timerInterval)clearInterval(d.timerInterval);
+  d.timerRemaining=d.timerSeconds;
+  d.timerInterval=setInterval(()=>{
+    if(d.phase!=='draft'||d.currentPick>=d.draftOrder.length){clearInterval(d.timerInterval);return;}
+    d.timerRemaining--;
+    if(d.timerRemaining<=0){clearInterval(d.timerInterval);autoPickOne(dk);return;}
+    updateTimerUI(dk);
+  },1000);
+}
+function updateTimerUI(dk){
+  const d=state.divs[dk];
+  const el=document.getElementById(`clock-timer-${dk}`);const fill=document.getElementById(`timer-fill-${dk}`);if(!el)return;
+  const urg=d.timerRemaining<=10;
+  el.textContent=fmtTime(d.timerRemaining);el.className=`clock-timer ${urg?'urgent':''}`;
+  if(fill){fill.style.width=(d.timerRemaining/d.timerSeconds*100)+'%';fill.className=`timer-fill ${urg?'urgent':''}`;}
+}
+function autoPickOne(dk){
+  const d=state.divs[dk];
+  const avail=d.players.filter(p=>!p.drafted).sort((a,b)=>a.rating-b.rating||b.ageDays-a.ageDays||a.lastName.localeCompare(b.lastName));
+  if(avail.length&&d.currentPick<d.draftOrder.length)executePick(dk,avail[0]);
+}
+
+// ===================== DRAFT INTERACTIONS =====================
+function selectPlayer(dk,pid,evt){
+  const d=state.divs[dk];
+  const player=d.players.find(p=>p.id===pid);if(!player||player.drafted)return;
+  d.selectedPlayer=player;
+  document.querySelectorAll(`#pool-list-${dk} .player-card-row`).forEach(el=>el.classList.remove('selected'));
+  if(evt&&evt.currentTarget)evt.currentTarget.classList.add('selected');
+  const det=document.getElementById(`player-detail-${dk}`);
+  det.className='player-detail open';
+  det.innerHTML=`<div class="player-detail-name">${esc(player.firstName)} ${esc(player.lastName)}</div><div class="detail-grid"><div class="detail-item"><div class="dk">Rating</div><div class="dv" style="color:var(--gold);font-size:18px;">&#9733; ${player.rating===99?'?':player.rating}</div></div><div class="detail-item"><div class="dk">Age</div><div class="dv">${fmtAge(player)}</div></div><div class="detail-item"><div class="dk">Position</div><div class="dv">${esc(player.position||'—')}</div></div><div class="detail-item"><div class="dk">Shirt Size</div><div class="dv">${player.jerseySize||'—'}</div></div><div class="detail-item"><div class="dk">Seasons</div><div class="dv">${esc(player.seasons||'—')}</div></div><div class="detail-item"><div class="dk">Rank</div><div class="dv">#${player.rank}</div></div></div>${player.core?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Core:</span> ${esc(player.core)}</div>`:''}${player.priorCoach?`<div style="margin-top:8px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:7px;"><span style="color:var(--gold);font-weight:600;">Prior Coach:</span> ${esc(player.priorCoach)}</div>`:''}`;
+  document.getElementById(`draft-btn-${dk}`).disabled=false;
+}
+function updateSearch(dk,v){state.divs[dk].searchQuery=v;document.getElementById(`pool-list-${dk}`).innerHTML=renderPool(dk);}
+function setSort(dk,v){state.divs[dk].poolSort=v;renderDraft(dk);}
+function draftSelected(dk){const d=state.divs[dk];if(!d.selectedPlayer||d.currentPick>=d.draftOrder.length)return;executePick(dk,d.selectedPlayer);}
+
+function executePick(dk,player){
+  const d=state.divs[dk];if(d.currentPick>=d.draftOrder.length)return;
+  cancelAutoPick(dk);
+  d.history.push(snapshot(d));
+  const ord=d.draftOrder[d.currentPick];
+  player.drafted=true;player.draftPick=ord.pickNum;player.draftRound=ord.round;player.draftTeam=d.coaches[ord.teamIdx]?.name||'';player.draftType='draft';
+  d.picks.push({pickNum:ord.pickNum,round:ord.round,teamIdx:ord.teamIdx,player,type:'draft'});
+  d.currentPick++;d.selectedPlayer=null;
+  if(d.timerInterval)clearInterval(d.timerInterval);
+  if(d.timerEnabled&&d.currentPick<d.draftOrder.length)startTimer(dk);
+  renderDraft(dk);
+}
+
+// ===================== MANUAL ADD PLAYER =====================
+function openAddPlayerModal(dk){
+  // Store divKey on modal
+  document.getElementById('addPlayerModal').dataset.dk=dk;
+  // Clear all fields
+  ['division','firstName','lastName','birthdate','email','shirtSize','seasons','workBond','position','rating','core','priorCoach']
+    .forEach(f=>{const el=document.getElementById('ap-'+f);if(el)el.value='';});
+  // Pre-fill division from current div
+  const cfg=DIV_CONFIG[dk];
+  document.getElementById('ap-division').value=cfg.label;
+  document.getElementById('ap-error').style.display='none';
+  document.getElementById('addPlayerModal').classList.add('open');
+  document.getElementById('ap-firstName').focus();
+}
+
+function closeAddPlayerModal(){
+  document.getElementById('addPlayerModal').classList.remove('open');
+}
+
+function submitAddPlayer(){
+  const dk=document.getElementById('addPlayerModal').dataset.dk;
+  const d=state.divs[dk];
+  const firstName=document.getElementById('ap-firstName').value.trim();
+  const lastName=document.getElementById('ap-lastName').value.trim();
+  const errEl=document.getElementById('ap-error');
+  if(!firstName||!lastName){
+    errEl.textContent='First Name and Last Name are required.';
+    errEl.style.display='block';
+    return;
+  }
+  errEl.style.display='none';
+
+  const ratingRaw=parseFloat(document.getElementById('ap-rating').value);
+  const rating=(isNaN(ratingRaw)||ratingRaw<1||ratingRaw>5)?99:Math.round(ratingRaw);
+  const birthDate=parseDOB(document.getElementById('ap-birthdate').value.trim());
+
+  // Assign a unique id
+  const maxId=d.players.reduce((m,p)=>Math.max(m,p.id),0);
+  const newPlayer={
+    id:maxId+1,
+    division:document.getElementById('ap-division').value.trim(),
+    firstName,
+    lastName,
+    birthDate,
+    email:document.getElementById('ap-email').value.trim(),
+    jerseySize:document.getElementById('ap-shirtSize').value.trim().toUpperCase(),
+    seasons:document.getElementById('ap-seasons').value.trim(),
+    workBond:document.getElementById('ap-workBond').value.trim(),
+    position:document.getElementById('ap-position').value.trim(),
+    rating,
+    core:document.getElementById('ap-core').value.trim(),
+    priorCoach:document.getElementById('ap-priorCoach').value.trim(),
+    notes:'',
+    manualAdd:true,
+    drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null,
+  };
+
+  // Compute age fields
+  newPlayer.ageMs=newPlayer.birthDate?Date.now()-newPlayer.birthDate.getTime():0;
+  newPlayer.ageYears=newPlayer.ageMs/(365.25*24*3600*1000);
+  newPlayer.ageDays=Math.floor(newPlayer.ageMs/(24*3600*1000));
+
+  // Add to players and re-rank
+  d.players.push(newPlayer);
+  d.players.filter(p=>!p.drafted).sort((a,b)=>{
+    if(a.rating!==b.rating)return a.rating-b.rating;
+    if(b.ageDays!==a.ageDays)return b.ageDays-a.ageDays;
+    return a.lastName.localeCompare(b.lastName);
+  }).forEach((p,i)=>{if(!p.drafted)p.rank=i+1;});
+
+  closeAddPlayerModal();
+
+  // Refresh pool list
+  const poolEl=document.getElementById('pool-list-'+dk);
+  if(poolEl)poolEl.innerHTML=renderPool(dk);
+
+  // Update avail count in card header
+  const avail=d.players.filter(p=>!p.drafted).length;
+  renderDraft(dk);
+  safeSave();
+}
+
+// ===================== ADMIN ASSIGN (DURING DRAFT) =====================
+function openAdminModal(dk){
+  cancelAutoPick(dk);
+  // Store divKey in adminCtx before opening
+  adminCtx.divKey=dk;
+  adminCtx.selectedPlayerId=null;
+  adminCtx.selectedTeamIdx=null;
+
+  const d=state.divs[dk];
+  document.getElementById('adminTeamSelect').innerHTML='<option value="">— Select a team —</option>'+
+    d.coaches.map((c,i)=>`<option value="${i}">${esc(c.name)} (${d.picks.filter(p=>p.teamIdx===i).length} players)</option>`).join('');
+  document.getElementById('adminSearchInput').value='';
+  document.getElementById('adminPlayerSelected').style.display='none';
+  document.getElementById('adminAssignBtn').disabled=true;
+  renderAdminList();
+  document.getElementById('adminModal').classList.add('open');
+}
+
+function filterAdminPlayers(){renderAdminList();}
+
+function renderAdminList(){
+  const dk=adminCtx.divKey;
+  if(!dk)return;
+  const d=state.divs[dk];
+  const q=document.getElementById('adminSearchInput').value.toLowerCase();
+  let players=d.players.filter(p=>!p.drafted);
+  if(q)players=players.filter(p=>(p.firstName+' '+p.lastName).toLowerCase().includes(q));
+  players.sort((a,b)=>a.rank-b.rank);
+  const list=document.getElementById('adminPlayerList');
+  if(!players.length){list.innerHTML=`<div class="empty-state" style="padding:16px;"><div>✅</div>No players match.</div>`;return;}
+  list.innerHTML=players.map(p=>`
+    <div class="assign-player-row ${adminCtx.selectedPlayerId===p.id?'selected':''}" onclick="selectAdminPlayer(${p.id},event)">
+      <span class="player-rank">#${p.rank}</span>
+      <div class="player-info"><div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}</div><div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}</div></div>
+      <span class="player-size-badge">${p.jerseySize||'?'}</span>
+      <span class="player-age-badge">${p.ageYears.toFixed(1)}y</span>
+    </div>`).join('');
+}
+
+function selectAdminPlayer(pid,evt){
+  adminCtx.selectedPlayerId=pid;
+  document.querySelectorAll('.assign-player-row').forEach(el=>el.classList.remove('selected'));
+  if(evt&&evt.currentTarget)evt.currentTarget.classList.add('selected');
+  const d=state.divs[adminCtx.divKey];
+  const p=d.players.find(pl=>pl.id===pid);
+  document.getElementById('adminPlayerSelected').style.display='';
+  document.getElementById('adminSelectedAlert').innerHTML=`Selected: <strong>${esc(p.firstName)} ${esc(p.lastName)}</strong> · ★${p.rating===99?'?':p.rating} · ${fmtAge(p)} · ${p.jerseySize||'?'}`;
+  checkAdminReady();
+}
+
+function checkAdminReady(){
+  document.getElementById('adminAssignBtn').disabled=!(adminCtx.selectedPlayerId&&document.getElementById('adminTeamSelect').value!=='');
+}
+
+function confirmAdminAssign(){
+  // Capture everything from adminCtx and DOM BEFORE closing the modal
+  const dk=adminCtx.divKey;
+  const pid=adminCtx.selectedPlayerId;
+  const teamIdx=parseInt(document.getElementById('adminTeamSelect').value);
+  if(!dk||!pid||isNaN(teamIdx))return;
+
+  const d=state.divs[dk];
+  const player=d.players.find(p=>p.id===pid);
+  const teamName=d.coaches[teamIdx]?.name||'';
+  if(!player)return;
+
+  closeAdminModal();
+
+  // Now confirm with all captured values — no modal references needed
+  showConfirm(
+    '🛡️ Admin Assign',
+    `Assign ${player.firstName} ${player.lastName} to ${teamName}? Draft resumes from current pick after this.`,
+    ()=>executeAdminAssign(dk,pid,teamIdx)
+  );
+}
+
+function executeAdminAssign(dk,pid,teamIdx){
+  const d=state.divs[dk];
+  const player=d.players.find(p=>p.id===pid);
+  if(!player)return;
+
+  d.history.push(snapshot(d));
+  player.drafted=true;
+  player.draftTeam=d.coaches[teamIdx]?.name||'';
+  player.draftType='admin';
+  player.draftRound=null;
+  player.draftPick=null;
+  d.picks.push({pickNum:null,round:null,teamIdx,player,type:'admin'});
+  d.selectedPlayer=null;
+  // currentPick does NOT advance
+  if(d.timerInterval)clearInterval(d.timerInterval);
+  if(d.timerEnabled&&d.currentPick<d.draftOrder.length)startTimer(dk);
+  renderDraft(dk);
+  safeSave();
+}
+
+function closeAdminModal(){document.getElementById('adminModal').classList.remove('open');}
+
+// ===================== UNDO =====================
+function snapshot(d){
+  return{
+    currentPick:d.currentPick,
+    picks:JSON.stringify(d.picks.map(p=>({...p,player:{id:p.player.id}}))),
+    players:JSON.stringify(d.players.map(p=>({id:p.id,drafted:p.drafted,draftPick:p.draftPick,draftRound:p.draftRound,draftTeam:p.draftTeam,draftType:p.draftType}))),
+    draftOrder:JSON.stringify(d.draftOrder)
+  };
+}
+function undoPick(dk){
+  cancelAutoPick(dk);
+  const d=state.divs[dk];if(!d.history.length)return;
+  const snap=d.history.pop();
+  d.currentPick=snap.currentPick;
+  if(snap.draftOrder)d.draftOrder=JSON.parse(snap.draftOrder);
+  JSON.parse(snap.players).forEach(ps=>{const p=d.players.find(pl=>pl.id===ps.id);if(p){p.drafted=ps.drafted;p.draftPick=ps.draftPick;p.draftRound=ps.draftRound;p.draftTeam=ps.draftTeam;p.draftType=ps.draftType;}});
+  d.picks=JSON.parse(snap.picks).map(pk=>({...pk,player:d.players.find(p=>p.id===pk.player.id)}));
+  d.selectedPlayer=null;
+  if(d.timerInterval)clearInterval(d.timerInterval);
+  if(d.timerEnabled&&d.currentPick<d.draftOrder.length)startTimer(dk);
+  renderDraft(dk);
+  safeSave();
+}
+
+// ===================== SKIP PICK =====================
+function skipPick(dk){
+  const d=state.divs[dk];
+  if(d.currentPick>=d.draftOrder.length)return;
+  const pick=d.draftOrder[d.currentPick];
+  const coachName=d.coaches[pick.teamIdx]?.name||'';
+  showConfirm(
+    '⏭ Skip Pick',
+    `Skip ${coachName}'s pick (Round ${pick.round}, Pick ${pick.pickNum})? They will not receive a player for this pick.`,
+    ()=>{
+      d.history.push(snapshot(d));
+      // Mark this slot as skipped by just advancing currentPick — no player assigned
+      d.currentPick++;
+      d.selectedPlayer=null;
+      if(d.timerInterval)clearInterval(d.timerInterval);
+      if(d.timerEnabled&&d.currentPick<d.draftOrder.length)startTimer(dk);
+      renderDraft(dk);
+      safeSave();
+    }
+  );
+}
+
+// ===================== AUTO COMPLETE =====================
+function autoComplete(dk){
+  showConfirm('⚡ Auto-Draft Remaining','Fill remaining picks oldest-first (biggest jersey as tiebreaker)?',()=>{
+    const d=state.divs[dk];
+    if(d.timerInterval){clearInterval(d.timerInterval);d.timerInterval=null;}
+    while(d.currentPick<d.draftOrder.length){
+      const avail=d.players.filter(p=>!p.drafted).sort((a,b)=>a.rating-b.rating||b.ageDays-a.ageDays||a.lastName.localeCompare(b.lastName));
+      if(!avail.length){d.currentPick=d.draftOrder.length;break;}
+      const ord=d.draftOrder[d.currentPick];
+      const player=avail[0];
+      d.history.push(snapshot(d));
+      player.drafted=true;player.draftPick=ord.pickNum;player.draftRound=ord.round;
+      player.draftTeam=d.coaches[ord.teamIdx]?.name||'';player.draftType='draft';
+      d.picks.push({pickNum:ord.pickNum,round:ord.round,teamIdx:ord.teamIdx,player,type:'draft'});
+      d.currentPick++;
+    }
+    d.selectedPlayer=null;
+    renderDraft(dk);
+    safeSave();
+  });
+}
+
+// ===================== FINALIZE =====================
+function finalize(dk){
+  showConfirm('✅ Finalize Draft','Lock in all picks and view rosters?',()=>{
+    const d=state.divs[dk];d.phase='done';
+    if(d.timerInterval)clearInterval(d.timerInterval);
+    renderDone(dk);
+    saveDraftToHistory(dk);
+    safeSave();
+  });
+}
+
+function renderDone(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  const teams=d.coaches.map((coach,ti)=>({
+    coach,
+    pre:d.picks.filter(p=>p.teamIdx===ti&&p.type==='pre'),
+    adm:d.picks.filter(p=>p.teamIdx===ti&&p.type==='admin'),
+    reg:d.picks.filter(p=>p.teamIdx===ti&&p.type==='draft').sort((a,b)=>a.pickNum-b.pickNum),
+    post:d.picks.filter(p=>p.teamIdx===ti&&p.type==='post'),
+  }));
+  const undrafted=d.players.filter(p=>!p.drafted);
+  const rosterCards=teams.map(t=>{
+    const allPicks=[...t.pre,...t.adm,...t.reg,...t.post];
+    const ratedPicks=allPicks.filter(pk=>pk.player.rating!==99&&pk.player.rating!==null&&pk.player.rating!==undefined);
+    const ratingSum=ratedPicks.reduce((s,pk)=>s+(Number(pk.player.rating)||0),0);
+    const ratingAvg=ratedPicks.length?( ratingSum/ratedPicks.length).toFixed(1):'?';
+    return`
+    <div class="roster-card">
+      <div class="roster-card-header">
+        <div class="roster-card-coach">${esc(t.coach.name)}</div>
+        <div class="roster-card-meta">${allPicks.length} players</div>
+      </div>
+      ${t.pre.map(pk=>`<div class="roster-player-item"><span class="roster-pick-badge" style="color:var(--gold);">⭐ Pre</span><span class="roster-player-name">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</span><span style="font-size:11px;color:var(--gold);font-weight:700;margin-right:4px;">★${pk.player.rating===99?'?':pk.player.rating}</span><span class="roster-player-age">${fmtAge(pk.player)}</span><span class="player-size-badge">${pk.player.jerseySize||'?'}</span></div>`).join('')}
+      ${t.adm.map(pk=>`<div class="roster-player-item"><span class="roster-pick-badge" style="color:#c39bd3;">🛡️ Adm</span><span class="roster-player-name">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</span><span style="font-size:11px;color:var(--gold);font-weight:700;margin-right:4px;">★${pk.player.rating===99?'?':pk.player.rating}</span><span class="roster-player-age">${fmtAge(pk.player)}</span><span class="player-size-badge">${pk.player.jerseySize||'?'}</span></div>`).join('')}
+      ${t.reg.map(pk=>`<div class="roster-player-item"><span class="roster-pick-badge">R${pk.round}·P${pk.pickNum}</span><span class="roster-player-name">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</span><span style="font-size:11px;color:var(--gold);font-weight:700;margin-right:4px;">★${pk.player.rating===99?'?':pk.player.rating}</span><span class="roster-player-age">${fmtAge(pk.player)}</span><span class="player-size-badge">${pk.player.jerseySize||'?'}</span></div>`).join('')}
+      ${t.post.map(pk=>`<div class="roster-player-item"><span class="roster-pick-badge post-draft-badge">📋 Post</span><span class="roster-player-name">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</span><span style="font-size:11px;color:var(--gold);font-weight:700;margin-right:4px;">★${pk.player.rating===99?'?':pk.player.rating}</span><span class="roster-player-age">${fmtAge(pk.player)}</span><span class="player-size-badge">${pk.player.jerseySize||'?'}</span></div>`).join('')}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--card3);border-top:1px solid rgba(255,255,255,.08);margin-top:2px;">
+        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Rating Total</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:11px;color:var(--muted);">avg ★${ratingAvg}</span>
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:1px;">★ ${ratingSum}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById(`app-${dk}`).innerHTML=`
+    <div style="margin-bottom:20px;" class="flex-between">
+      <div><div style="font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:3px;color:var(--gold);">${cfg.label} — Complete 🏆</div>
+      <div style="color:var(--muted);font-size:13px;">${d.picks.length} assigned · ${undrafted.length} undrafted</div></div>
+      <div class="flex-gap">
+        <button class="btn btn-outline btn-sm" onclick="startDraft('${dk}')">← Restart</button>
+        <button class="btn btn-outline btn-sm" onclick="openPostAddPlayer('${dk}')" style="border-color:rgba(255,165,0,.5);color:#ffa500;">📋 Add Player</button>
+        <button class="btn btn-outline btn-sm" onclick="commitDraftVersion('${dk}')" style="border-color:var(--line);color:var(--line);">💾 Commit Version</button>
+        <button class="btn btn-gold" onclick="exportDraft('${dk}')">⬇ Export Excel</button>
+      </div>
+    </div>
+    <div class="stats-row mb-16">
+      <div class="stat-pill"><div class="stat-num">${d.picks.length}</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-pill"><div class="stat-num">${d.picks.filter(p=>p.type==='pre').length}</div><div class="stat-lbl">⭐ Pre</div></div>
+      <div class="stat-pill"><div class="stat-num">${d.picks.filter(p=>p.type==='admin').length}</div><div class="stat-lbl">🛡️ Admin</div></div>
+      <div class="stat-pill"><div class="stat-num">${d.picks.filter(p=>p.type==='draft').length}</div><div class="stat-lbl">Drafted</div></div>
+      <div class="stat-pill"><div class="stat-num">${undrafted.length}</div><div class="stat-lbl">Undrafted</div></div>
+    </div>
+    ${undrafted.length?`<div class="alert alert-warn mb-16">⚠️ ${undrafted.length} undrafted: ${undrafted.map(p=>p.firstName+' '+p.lastName).join(', ')}</div>`:`<div class="alert alert-success mb-16">✅ All ${d.players.length} players assigned!</div>`}
+    <div class="card mb-16" style="padding:16px 20px;border-color:rgba(82,183,136,.3);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);white-space:nowrap;">🔍 Find Player</span>
+        <div style="position:relative;flex:1;">
+          <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;">🔍</span>
+          <input type="text" id="done-search-${dk}" placeholder="Search by player name..." oninput="doneSearch('${dk}')" style="padding-left:36px;width:100%;background:var(--card3);">
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="doneSearch('${dk}','clear')" style="white-space:nowrap;">✕ Clear</button>
+      </div>
+      <div class="draft-search-result" id="done-search-result-${dk}">
+        <div style="font-size:28px;">⚽</div>
+        <div style="flex:1;">
+          <div class="dsr-name" id="dsr-name-${dk}"></div>
+          <div class="dsr-team" id="dsr-team-${dk}"></div>
+          <div class="dsr-meta" id="dsr-meta-${dk}"></div>
+        </div>
+        <div id="dsr-badges-${dk}" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+      </div>
+    </div>
+    <div class="roster-grid" id="done-roster-grid-${dk}">${rosterCards}</div>
+    <div style="margin-top:28px;background:var(--card2);border:2px solid var(--gold);border-radius:var(--radius);padding:24px;text-align:center;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">💾 Save Draft Results</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:18px;">Downloads an Excel file to your computer with the full draft results and individual team sheets.</div>
+      <button class="btn btn-gold" onclick="exportDraft('${dk}')" style="font-size:15px;padding:16px 48px;">⬇ Download Excel to Desktop</button>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;">File will be saved to your Downloads folder as <strong style="color:var(--text);">${cfg.label}_Draft_Results.xlsx</strong></div>
+    </div>`;
+}
+
+// ===================== MOVE PLAYER =====================
+function openMovePlayer(dk, playerId, evt){
+  evt.stopPropagation();
+  const d=state.divs[dk];
+  // Close any existing open move selects
+  document.querySelectorAll('.move-select').forEach(el=>el.remove());
+  const btn=evt.currentTarget;
+  const row=btn.closest('.team-player-row');
+  if(!row)return;
+  const pick=d.picks.find(pk=>pk.player&&pk.player.id===playerId);
+  if(!pick)return;
+  const currentTeamIdx=pick.teamIdx;
+  const sel=document.createElement('select');
+  sel.className='move-select';
+  sel.innerHTML='<option value="">Move to...</option>'+
+    d.coaches.map((c,i)=>i===currentTeamIdx?'':`<option value="${i}">${esc(c.name)}</option>`).join('');
+  sel.onchange=function(){
+    const toTeamIdx=parseInt(this.value);
+    if(isNaN(toTeamIdx))return;
+    sel.remove();
+    executeMovePlayer(dk,playerId,toTeamIdx);
+  };
+  setTimeout(()=>{
+    document.addEventListener('click',function closeSel(e){
+      if(!sel.contains(e.target)){sel.remove();document.removeEventListener('click',closeSel);}
+    });
+  },10);
+  row.style.flexWrap='wrap';
+  row.appendChild(sel);
+  sel.focus();
+}
+
+function executeMovePlayer(dk, playerId, toTeamIdx){
+  const d=state.divs[dk];
+  d.history.push(snapshot(d));
+  const pick=d.picks.find(pk=>pk.player&&pk.player.id===playerId);
+  if(!pick)return;
+  pick.teamIdx=toTeamIdx;
+  if(pick.player)pick.player.draftTeam=d.coaches[toTeamIdx]?.name||'';
+  safeSave();
+  renderDraft(dk);
+}
+
+// ===================== DIVISION SETTINGS =====================
+function openDivSettings(){
+  renderDivSettingsList();
+  document.getElementById('new-div-key').value='';
+  document.getElementById('new-div-label').value='';
+  document.getElementById('new-div-teams').value='4';
+  document.getElementById('new-div-error').style.display='none';
+  document.getElementById('divSettingsModal').classList.add('open');
+}
+
+function closeDivSettings(){
+  document.getElementById('divSettingsModal').classList.remove('open');
+}
+
+function renderDivSettingsList(){
+  const list=document.getElementById('div-settings-list');
+  if(!list)return;
+  const rows=Object.keys(DIV_CONFIG).map(dk=>{
+    const cfg=DIV_CONFIG[dk];
+    const d=state.divs[dk];
+    const hasData=d&&d.players&&d.players.length>0;
+    return`<div class="div-settings-row">
+      <span class="div-key-badge">${dk}</span>
+      <input type="text" value="${esc(cfg.label)}" id="div-label-${dk}" style="flex:1;font-size:13px;" onchange="renameDivision('${dk}',this.value)">
+      <input type="number" value="${cfg.teams}" min="2" max="16" id="div-teams-${dk}" style="width:60px;font-size:13px;" onchange="resizeDivision('${dk}',this.value)" title="Number of teams">
+      <span style="font-size:11px;color:var(--muted);">${hasData?d.players.length+' players':'empty'}</span>
+      <button onclick="removeDivision('${dk}')" style="background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:var(--danger);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;" title="Remove division">✕ Remove</button>
+    </div>`;
+  }).join('');
+
+  const removedRows=Object.keys(state.removedDivs).length>0?
+    `<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Removed Divisions</div>
+      ${Object.keys(state.removedDivs).map(dk=>`
+        <div class="div-settings-row" style="opacity:.7;">
+          <span class="div-key-badge">${dk}</span>
+          <span style="flex:1;font-size:13px;color:var(--muted);">${esc(state.removedDivs[dk].label)} (removed)</span>
+          <button onclick="reinstateDivision('${dk}')" style="background:rgba(82,183,136,.15);border:1px solid rgba(82,183,136,.4);color:var(--line);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">↩ Reinstate</button>
+        </div>`).join('')}
+    </div>`:'';
+
+  list.innerHTML=rows+removedRows;
+}
+
+function renameDivision(dk,newLabel){
+  if(!newLabel.trim())return;
+  DIV_CONFIG[dk].label=newLabel.trim();
+  // Update tab
+  const tab=document.getElementById('tab-'+dk);
+  if(tab)tab.textContent=newLabel.trim();
+  renderDivTabs();
+  safeSave();
+}
+
+function resizeDivision(dk,val){
+  const n=parseInt(val);
+  if(isNaN(n)||n<2||n>16)return;
+  DIV_CONFIG[dk].teams=n;
+  safeSave();
+}
+
+function removeDivision(dk){
+  showConfirm('✕ Remove Division','Remove the '+DIV_CONFIG[dk].label+' division? All data is preserved and can be reinstated.',()=>{
+    // Save snapshot for reinstatement
+    state.removedDivs[dk]={
+      label:DIV_CONFIG[dk].label,
+      config:{...DIV_CONFIG[dk]},
+      divState:JSON.parse(JSON.stringify({
+        ...state.divs[dk],
+        players:state.divs[dk].players,
+        picks:state.divs[dk].picks.map(pk=>({...pk,player:{id:pk.player?.id}})),
+        history:[]
+      }))
+    };
+    delete DIV_CONFIG[dk];
+    // Hide app div
+    const appEl=document.getElementById('app-'+dk);
+    if(appEl)appEl.style.display='none';
+    // Switch to first available div
+    const remaining=Object.keys(DIV_CONFIG);
+    if(remaining.length>0)switchDiv(remaining[0]);
+    renderDivTabs();
+    renderDivSettingsList();
+    updateHeaderStatus();
+    safeSave();
+  });
+}
+
+function reinstateDivision(dk){
+  const saved=state.removedDivs[dk];
+  if(!saved)return;
+  DIV_CONFIG[dk]=saved.config;
+  // Restore div state
+  const d=state.divs[dk];
+  const restored=saved.divState;
+  d.phase=restored.phase;
+  d.coaches=restored.coaches||[];
+  d.preAssigns=restored.preAssigns||[];
+  d.currentPick=restored.currentPick||0;
+  d.draftOrder=restored.draftOrder||[];
+  d.picks=[];d.history=[];
+  if(restored.players)d.players=restored.players;
+  delete state.removedDivs[dk];
+  // Show app div and render correct phase
+  const appEl=document.getElementById('app-'+dk);
+  if(appEl)appEl.style.display='none';
+  renderDivTabs();
+  switchDiv(dk);
+  restoreCurrentDraft(dk);
+  renderDivSettingsList();
+  updateHeaderStatus();
+  safeSave();
+}
+
+function addDivision(){
+  const key=document.getElementById('new-div-key').value.trim().toLowerCase().replace(/\s+/g,'');
+  const label=document.getElementById('new-div-label').value.trim();
+  const teams=parseInt(document.getElementById('new-div-teams').value)||4;
+  const errEl=document.getElementById('new-div-error');
+  if(!key||!label){errEl.textContent='Key and Label are required.';errEl.style.display='block';return;}
+  if(DIV_CONFIG[key]){errEl.textContent='A division with that key already exists.';errEl.style.display='block';return;}
+  if(!/^[a-z0-9]+$/.test(key)){errEl.textContent='Key must be lowercase letters and numbers only (e.g. u13).';errEl.style.display='block';return;}
+  errEl.style.display='none';
+  DIV_CONFIG[key]={label,teams};
+  if(!state.divs[key])state.divs[key]=freshDiv(key);
+  // Create app div if needed
+  let appEl=document.getElementById('app-'+key);
+  if(!appEl){
+    appEl=document.createElement('div');
+    appEl.className='div-app';
+    appEl.id='app-'+key;
+    appEl.style.display='none';
+    document.querySelector('main').appendChild(appEl);
+  }
+  appEl.innerHTML=buildUpload(key);
+  bindDrop(key);
+  renderDivTabs();
+  renderDivSettingsList();
+  updateHeaderStatus();
+  switchDiv(key);
+  closeDivSettings();
+  safeSave();
+}
+
+// ===================== POST-DRAFT ADD PLAYER =====================
+let postAddDk=null;
+
+function openPostAddPlayer(dk){
+  postAddDk=dk;
+  const d=state.divs[dk];
+  // Populate team select
+  const sel=document.getElementById('pap-teamSelect');
+  sel.innerHTML='<option value="">— Select a team —</option>'+
+    d.coaches.map((c,i)=>`<option value="${i}">${esc(c.name)}</option>`).join('');
+  // Pre-fill division
+  document.getElementById('pap-division').value=DIV_CONFIG[dk]?.label||'';
+  // Clear other fields
+  ['firstName','lastName','birthdate','email','shirtSize','seasons','position','rating','core','priorCoach']
+    .forEach(f=>{const el=document.getElementById('pap-'+f);if(el)el.value='';});
+  document.getElementById('pap-error').style.display='none';
+  document.getElementById('postAddPlayerModal').classList.add('open');
+  document.getElementById('pap-firstName').focus();
+}
+
+function closePostAddPlayer(){
+  document.getElementById('postAddPlayerModal').classList.remove('open');
+  postAddDk=null;
+}
+
+function submitPostAddPlayer(keepOpen){
+  const dk=postAddDk;
+  if(!dk)return;
+  const d=state.divs[dk];
+  const firstName=document.getElementById('pap-firstName').value.trim();
+  const lastName=document.getElementById('pap-lastName').value.trim();
+  const teamIdx=parseInt(document.getElementById('pap-teamSelect').value);
+  const errEl=document.getElementById('pap-error');
+
+  if(!firstName||!lastName){errEl.textContent='First Name and Last Name are required.';errEl.style.display='block';return;}
+  if(isNaN(teamIdx)){errEl.textContent='Please select a team.';errEl.style.display='block';return;}
+  errEl.style.display='none';
+
+  const ratingRaw=parseFloat(document.getElementById('pap-rating').value);
+  const rating=(isNaN(ratingRaw)||ratingRaw<1||ratingRaw>5)?99:Math.round(ratingRaw);
+  const birthDate=parseDOB(document.getElementById('pap-birthdate').value.trim());
+  const maxId=d.players.reduce((m,p)=>Math.max(m,p.id),0);
+  const now=Date.now();
+  const ageMs=birthDate?now-birthDate.getTime():0;
+  const ageYears=ageMs/(365.25*24*3600*1000);
+  const ageDays=Math.floor(ageMs/(24*3600*1000));
+
+  const player={
+    id:maxId+1,
+    division:document.getElementById('pap-division').value.trim(),
+    firstName,lastName,birthDate,
+    email:document.getElementById('pap-email').value.trim(),
+    jerseySize:document.getElementById('pap-shirtSize').value.trim().toUpperCase(),
+    seasons:document.getElementById('pap-seasons').value.trim(),
+    workBond:'',
+    position:document.getElementById('pap-position').value.trim(),
+    rating,core:document.getElementById('pap-core').value.trim(),
+    priorCoach:document.getElementById('pap-priorCoach').value.trim(),
+    notes:'',manualAdd:false,postDraftAdd:true,
+    ageMs,ageYears,ageDays,rank:d.players.length+1,
+    drafted:true,
+    draftPick:null,draftRound:null,
+    draftTeam:d.coaches[teamIdx]?.name||'',
+    draftType:'post'
+  };
+
+  d.players.push(player);
+  d.picks.push({pickNum:null,round:null,teamIdx,player,type:'post'});
+
+  if(keepOpen){
+    // Clear name fields and team, ready for next entry
+    document.getElementById('pap-firstName').value='';
+    document.getElementById('pap-lastName').value='';
+    document.getElementById('pap-teamSelect').value='';
+    ['birthdate','email','shirtSize','seasons','position','rating','core','priorCoach']
+      .forEach(f=>{const el=document.getElementById('pap-'+f);if(el)el.value='';});
+    document.getElementById('pap-firstName').focus();
+  } else {
+    closePostAddPlayer();
+  }
+
+  renderDone(dk);
+  safeSave();
+}
+
+// ===================== COMMIT DRAFT VERSION =====================
+function commitDraftVersion(dk){
+  showConfirm('💾 Commit Version','Save current roster as a new version in draft history? This captures all post-draft additions made so far.',()=>{
+    saveDraftToHistory(dk);
+    // Show brief confirmation
+    const btn=document.querySelector(`button[onclick="commitDraftVersion('${dk}')"]`);
+    if(btn){const orig=btn.textContent;btn.textContent='✓ Saved!';btn.style.color='var(--line)';setTimeout(()=>{btn.textContent=orig;btn.style.color='';},2000);}
+    safeSave();
+  });
+}
+
+// ===================== REORDER DRAFT POSITIONS =====================
+let reorderDk=null;
+let reorderCoaches=[];
+let reorderDragIdx=null;
+
+function openReorderModal(dk){
+  const d=state.divs[dk];
+  reorderDk=dk;
+  // Work on a copy of coaches
+  reorderCoaches=[...d.coaches.map(c=>({...c}))];
+  renderReorderList();
+  document.getElementById('reorder-error').style.display='none';
+  document.getElementById('reorderModal').classList.add('open');
+}
+
+function renderReorderList(){
+  const list=document.getElementById('reorder-list');
+  if(!list)return;
+  list.innerHTML=reorderCoaches.map((c,i)=>`
+    <div class="reorder-row" draggable="true"
+      ondragstart="reorderDragStart(${i})"
+      ondragover="reorderDragOver(event,${i})"
+      ondrop="reorderDrop(event,${i})"
+      ondragend="reorderDragEnd()"
+      id="reorder-row-${i}">
+      <span class="reorder-num">${i+1}</span>
+      <span class="reorder-name">${esc(c.name)}</span>
+      <span class="reorder-grip">⠿</span>
+    </div>`).join('');
+}
+
+function reorderDragStart(i){
+  reorderDragIdx=i;
+  setTimeout(()=>{
+    const el=document.getElementById('reorder-row-'+i);
+    if(el)el.classList.add('dragging');
+  },0);
+}
+
+function reorderDragOver(e,i){
+  e.preventDefault();
+  document.querySelectorAll('.reorder-row').forEach(el=>{
+    el.classList.remove('drag-over-top','drag-over-bot');
+  });
+  if(reorderDragIdx===null||reorderDragIdx===i)return;
+  const el=document.getElementById('reorder-row-'+i);
+  if(el)el.classList.add(i<reorderDragIdx?'drag-over-top':'drag-over-bot');
+}
+
+function reorderDrop(e,to){
+  e.preventDefault();
+  document.querySelectorAll('.reorder-row').forEach(el=>el.classList.remove('drag-over-top','drag-over-bot','dragging'));
+  if(reorderDragIdx===null||reorderDragIdx===to)return;
+  const[moved]=reorderCoaches.splice(reorderDragIdx,1);
+  reorderCoaches.splice(to,0,moved);
+  reorderDragIdx=null;
+  renderReorderList();
+}
+
+function reorderDragEnd(){
+  document.querySelectorAll('.reorder-row').forEach(el=>el.classList.remove('dragging','drag-over-top','drag-over-bot'));
+  reorderDragIdx=null;
+}
+
+function closeReorderModal(){
+  document.getElementById('reorderModal').classList.remove('open');
+  reorderDk=null;reorderCoaches=[];
+}
+
+function confirmReorder(){
+  if(!reorderDk)return;
+  const dk=reorderDk; // capture before closeReorderModal nulls it
+  const d=state.divs[dk];
+  const cfg=DIV_CONFIG[dk];
+
+  // Push snapshot BEFORE any changes (for undo)
+  d.history.push(snapshot(d));
+
+  // Build name→oldIndex and name→newIndex maps BEFORE changing d.coaches
+  const oldOrder=d.coaches.map(c=>c.name);          // ['Alice','Bob','Carol','Dave']
+  const newOrder=reorderCoaches.map(c=>c.name);      // ['Carol','Alice','Dave','Bob']
+  const nameToNewIdx={};
+  newOrder.forEach((name,i)=>nameToNewIdx[name]=i);
+
+  // Remap completed draftOrder slots (by coach name → new index)
+  const completedSlots=d.draftOrder.slice(0,d.currentPick).map(slot=>{
+    const coachName=oldOrder[slot.teamIdx];
+    const newIdx=coachName!==undefined?nameToNewIdx[coachName]:slot.teamIdx;
+    return{...slot,teamIdx:newIdx??slot.teamIdx};
+  });
+
+  // Remap existing picks the same way
+  d.picks.forEach(pk=>{
+    const coachName=oldOrder[pk.teamIdx];
+    if(coachName!==undefined&&nameToNewIdx[coachName]!==undefined){
+      pk.teamIdx=nameToNewIdx[coachName];
+    }
+  });
+
+  // Apply new coach order
+  d.coaches=[...reorderCoaches];
+  syncPreAssignIndices(dk);
+
+  // Rebuild remaining slots using new coach order
+  // Preserve the same round structure and pick numbers as before
+  const remainingSlots=d.draftOrder.slice(d.currentPick);
+  const newRemaining=[];
+  let pickNum=remainingSlots.length>0?remainingSlots[0].pickNum:d.currentPick+1;
+
+  // Group remaining by round, rebuild each round with new team order
+  const rounds=[...new Set(remainingSlots.map(s=>s.round))].sort((a,b)=>a-b);
+  rounds.forEach(r=>{
+    const slotsInRound=remainingSlots.filter(s=>s.round===r);
+    const fwd=slotsInRound[0]?.dir==='→';
+    // New team sequence for this round
+    const teamSeq=fwd
+      ?Array.from({length:cfg.teams},(_,i)=>i)
+      :Array.from({length:cfg.teams},(_,i)=>cfg.teams-1-i);
+    // Only fill as many slots as existed in this round (partial rounds at end)
+    for(let i=0;i<slotsInRound.length;i++){
+      newRemaining.push({pickNum:pickNum++,round:r,teamIdx:teamSeq[i],dir:fwd?'→':'←'});
+    }
+  });
+
+  d.draftOrder=[...completedSlots,...newRemaining];
+
+  closeReorderModal();
+  renderDraft(dk);
+  safeSave();
+}
+
+// ===================== FULLSCREEN PANELS =====================
+function expandPanel(panel, dk){
+  const d=state.divs[dk];
+  const overlay=document.createElement('div');
+  overlay.className='panel-fullscreen-overlay';
+
+  const titles={
+    pool:'Player Pool',
+    board:'📋 Draft Board',
+    upnext:'📌 Up Next',
+    history:'🕒 Pick History',
+    rosters:'Team Rosters'
+  };
+
+  // Panel-specific large-format HTML
+  let bodyHtml='';
+  if(panel==='pool'){
+    // Two-column grid of player cards, bigger text
+    const poolHtml=renderPool(dk).replace(/player-card-row/g,'player-card-row fs-card').replace(/font-size:13px;font-weight:800/g,'font-size:18px;font-weight:800').replace(/font-size:11px/g,'font-size:14px').replace(/font-size:13px/g,'font-size:15px').replace(/padding:3px 9px/g,'padding:5px 14px');
+    bodyHtml=`
+      <div style="max-width:960px;margin:0 auto;">
+        <div class="search-bar" style="margin-bottom:16px;font-size:15px;">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="fs-search-${dk}" placeholder="Search players..." style="font-size:14px;" oninput="(function(v){const d=state.divs['${dk}'];const orig=d.searchQuery;d.searchQuery=v;document.getElementById('fs-pool-${dk}').innerHTML=renderPool('${dk}').replace(/player-card-row/g,'player-card-row fs-card').replace(/font-size:13px;font-weight:800/g,'font-size:18px;font-weight:800').replace(/font-size:11px/g,'font-size:14px');d.searchQuery=orig;})(this.value)">
+        </div>
+        <div id="fs-pool-${dk}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:8px;">${poolHtml}</div>
+      </div>`;
+  } else if(panel==='board'){
+    // Full-width board, no max-height
+    const boardHtml=renderBoard(dk).replace(/font-size:9px/g,'font-size:12px').replace(/font-size:10px/g,'font-size:13px').replace(/font-size:11px/g,'font-size:14px').replace(/minmax\(100px/g,'minmax(160px');
+    bodyHtml=`<div class="board-container" style="overflow-x:auto;">${boardHtml}</div>`;
+  } else if(panel==='upnext'){
+    const upHtml=renderUpNext(dk).replace(/next-pick-item/g,'next-pick-item').replace(/font-size/g,'font-size');
+    bodyHtml=`<div style="max-width:700px;margin:0 auto;"><div style="font-size:15px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">Upcoming Picks</div><div style="display:flex;flex-direction:column;gap:8px;">${upHtml}</div></div>`;
+  } else if(panel==='history'){
+    const d2=state.divs[dk];
+    const picks=d2.picks.filter(p=>p.type!=='pre');
+    const histHtml=[...picks].reverse().map(pk=>`
+      <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;background:var(--card2);border-radius:10px;border:1px solid rgba(255,255,255,.06);">
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);min-width:70px;">${pk.type==='admin'?'🛡️ ADM':`R${pk.round}·${pk.pickNum}`}</span>
+        <span style="font-size:16px;font-weight:700;color:var(--gold);min-width:130px;">${esc(d2.coaches[pk.teamIdx]?.name||'')}</span>
+        <span style="font-size:15px;flex:1;">${esc(pk.player.firstName)} ${esc(pk.player.lastName)}</span>
+        <span style="font-size:14px;color:var(--gold);font-weight:700;">★${pk.player.rating===99?'?':pk.player.rating}</span>
+        <span style="font-size:12px;color:var(--muted);">${pk.player.jerseySize||'?'}</span>
+      </div>`).join('');
+    bodyHtml=`<div style="max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:6px;">${histHtml||'<div style="color:var(--muted);text-align:center;padding:40px;">No picks yet</div>'}</div>`;
+  } else if(panel==='rosters'){
+    // Bigger roster cards
+    const rosterHtml=renderAllRosters(dk).replace(/font-size:11px/g,'font-size:14px').replace(/font-size:10px/g,'font-size:13px').replace(/font-size:9px/g,'font-size:12px').replace(/padding:6px 12px/g,'padding:10px 16px');
+    bodyHtml=`<div class="roster-grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;">${rosterHtml}</div>`;
+  }
+
+  overlay.innerHTML=`
+    <div class="panel-fullscreen-header">
+      <span class="panel-fullscreen-title">${titles[panel]||panel}</span>
+      <span style="font-size:13px;color:var(--muted);">Press Esc to close</span>
+      <button onclick="this.closest('.panel-fullscreen-overlay').remove()" style="background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);color:var(--text);border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:1px;">✕ Close</button>
+    </div>
+    <div class="panel-fullscreen-body">${bodyHtml}</div>`;
+
+  document.body.appendChild(overlay);
+
+  const onEsc=e=>{if(e.key==='Escape'){overlay.remove();document.removeEventListener('keydown',onEsc);}};
+  document.addEventListener('keydown',onEsc);
+}
+
+function renderPoolFiltered(dk,q){
+  const d=state.divs[dk];
+  const orig=d.searchQuery;
+  d.searchQuery=q||'';
+  const html=renderPool(dk);
+  d.searchQuery=orig;
+  return html;
+}
+
+// ===================== EDIT PLAYER =====================
+let editPlayerId=null;
+let editPlayerDk=null;
+
+function openEditPlayer(dk,pid){
+  const d=state.divs[dk];
+  const p=d.players.find(pl=>pl.id===pid);
+  if(!p)return;
+  editPlayerId=pid;
+  editPlayerDk=dk;
+
+  document.getElementById('ep-firstName').value=p.firstName||'';
+  document.getElementById('ep-lastName').value=p.lastName||'';
+  document.getElementById('ep-division').value=p.division||'';
+  document.getElementById('ep-birthdate').value=p.birthDate?p.birthDate.toLocaleDateString('en-US'):'';
+  document.getElementById('ep-email').value=p.email||'';
+  document.getElementById('ep-shirtSize').value=p.jerseySize||'';
+  document.getElementById('ep-seasons').value=p.seasons||'';
+  document.getElementById('ep-position').value=p.position||'';
+  document.getElementById('ep-rating').value=p.rating===99?'':p.rating;
+  document.getElementById('ep-core').value=p.core||'';
+  document.getElementById('ep-priorCoach').value=p.priorCoach||'';
+  document.getElementById('ep-error').style.display='none';
+  document.getElementById('editPlayerModal').classList.add('open');
+  document.getElementById('ep-firstName').focus();
+}
+
+function closeEditPlayerModal(){
+  document.getElementById('editPlayerModal').classList.remove('open');
+  editPlayerId=null;editPlayerDk=null;
+}
+
+function submitEditPlayer(){
+  if(!editPlayerId||!editPlayerDk)return;
+  const d=state.divs[editPlayerDk];
+  const p=d.players.find(pl=>pl.id===editPlayerId);
+  if(!p)return;
+
+  const firstName=document.getElementById('ep-firstName').value.trim();
+  const lastName=document.getElementById('ep-lastName').value.trim();
+  const errEl=document.getElementById('ep-error');
+
+  if(!firstName||!lastName){
+    errEl.textContent='First Name and Last Name are required.';
+    errEl.style.display='block';
+    return;
+  }
+
+  // Apply changes
+  p.firstName=firstName;
+  p.lastName=lastName;
+  p.division=document.getElementById('ep-division').value.trim();
+  const bd=parseDOB(document.getElementById('ep-birthdate').value.trim());
+  if(bd){
+    p.birthDate=bd;
+    p.ageMs=Date.now()-bd.getTime();
+    p.ageYears=p.ageMs/(365.25*24*3600*1000);
+    p.ageDays=Math.floor(p.ageMs/(24*3600*1000));
+  }
+  p.email=document.getElementById('ep-email').value.trim();
+  p.jerseySize=document.getElementById('ep-shirtSize').value.trim().toUpperCase();
+  p.seasons=document.getElementById('ep-seasons').value.trim();
+  p.position=document.getElementById('ep-position').value.trim();
+  const ratingRaw=parseFloat(document.getElementById('ep-rating').value);
+  p.rating=(isNaN(ratingRaw)||ratingRaw<1||ratingRaw>5)?99:Math.round(ratingRaw);
+  p.core=document.getElementById('ep-core').value.trim();
+  p.priorCoach=document.getElementById('ep-priorCoach').value.trim();
+
+  // Also update draftTeam label on any existing pick
+  const pick=d.picks.find(pk=>pk.player&&pk.player.id===editPlayerId);
+  if(pick)pick.player=p;
+
+  // Capture dk BEFORE closeEditPlayerModal nulls it
+  const savedDk=editPlayerDk;
+  const savedPhase=d.phase;
+  closeEditPlayerModal();
+
+  // Re-sort undrafted players
+  d.players.filter(p2=>!p2.drafted).sort((a,b)=>{
+    if(a.rating!==b.rating)return a.rating-b.rating;
+    if(b.ageDays!==a.ageDays)return b.ageDays-a.ageDays;
+    return a.lastName.localeCompare(b.lastName);
+  }).forEach((p2,i)=>{if(!p2.drafted)p2.rank=i+1;});
+
+  if(savedPhase==='draft')renderDraft(savedDk);
+  else if(savedPhase==='setup'||savedPhase==='setup-ready')renderSetup(savedDk);
+  else showUploadPreview(savedDk,state.divs[savedDk].players);
+  safeSave();
+}
+
+// ===================== DELETE PLAYER =====================
+function deletePlayer(dk,pid){
+  const d=state.divs[dk];
+  const p=d.players.find(pl=>pl.id===pid);
+  if(!p)return;
+  const name=p.firstName+' '+p.lastName;
+  showConfirm('🗑 Delete Player','Remove '+name+' from the roster? This cannot be undone.',()=>{
+    d.players=d.players.filter(pl=>pl.id!==pid);
+    d.preAssigns=d.preAssigns.filter(a=>a.playerId!==pid);
+    // Re-rank
+    d.players.filter(p2=>!p2.drafted).sort((a,b)=>{
+      if(a.rating!==b.rating)return a.rating-b.rating;
+      if(b.ageDays!==a.ageDays)return b.ageDays-a.ageDays;
+      return a.lastName.localeCompare(b.lastName);
+    }).forEach((p2,i)=>{if(!p2.drafted)p2.rank=i+1;});
+    const phase=d.phase;
+    if(phase==='draft')renderDraft(dk);
+    else if(phase==='setup'||phase==='setup-ready')renderSetup(dk);
+    else{showUploadPreview(dk,d.players);}
+    safeSave();
+  });
+}
+
+// ===================== ADD ROUND =====================
+function addRound(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  d.history.push(snapshot(d));
+  const currentRounds=d.draftOrder.length>0?d.draftOrder[d.draftOrder.length-1].round:0;
+  const newRound=currentRounds+1;
+  const fwd=newRound%2===1;
+  let pick=d.draftOrder.length>0?d.draftOrder[d.draftOrder.length-1].pickNum+1:1;
+  const teams=fwd
+    ?Array.from({length:cfg.teams},(_,i)=>i)
+    :Array.from({length:cfg.teams},(_,i)=>cfg.teams-1-i);
+  for(const t of teams){
+    d.draftOrder.push({pickNum:pick++,round:newRound,teamIdx:t,dir:fwd?'→':'←'});
+  }
+  renderDraft(dk);
+  safeSave();
+}
+
+// ===================== PER-COACH AUTO-DRAFT =====================
+let autoPickTimer=null;
+
+function toggleAutoCoach(dk, teamIdx){
+  const d=state.divs[dk];
+  if(d.autoCoaches.has(teamIdx))d.autoCoaches.delete(teamIdx);
+  else d.autoCoaches.add(teamIdx);
+  renderDraft(dk);
+  safeSave();
+}
+
+function checkAutoPickTrigger(dk){
+  const d=state.divs[dk];
+  if(d.currentPick>=d.draftOrder.length)return; // draft done
+  const curPick=d.draftOrder[d.currentPick];
+  if(!d.autoCoaches.has(curPick.teamIdx))return; // not an auto coach
+
+  // Find best available player
+  const avail=d.players.filter(p=>!p.drafted).sort((a,b)=>
+    a.rating-b.rating||b.ageDays-a.ageDays||a.lastName.localeCompare(b.lastName));
+  if(!avail.length)return;
+  const player=avail[0];
+
+  // Show preview banner
+  const preview=document.getElementById('auto-preview-'+dk);
+  const nameEl=document.getElementById('auto-pick-name-'+dk);
+  const metaEl=document.getElementById('auto-pick-meta-'+dk);
+  const countEl=document.getElementById('auto-countdown-'+dk);
+  if(!preview)return;
+
+  const coachName=d.coaches[curPick.teamIdx]?.name||'';
+  if(nameEl)nameEl.textContent=player.firstName+' '+player.lastName;
+  if(metaEl)metaEl.textContent=coachName+' · ★'+(player.rating===99?'?':player.rating)+' · '+(player.position||'—')+' · '+fmtAge(player);
+  preview.classList.add('show');
+
+  // Countdown: 1.5s total, tick every 500ms
+  let count=2;
+  if(countEl)countEl.textContent=count;
+  if(autoPickTimer)clearInterval(autoPickTimer);
+  autoPickTimer=setInterval(()=>{
+    count--;
+    if(countEl)countEl.textContent=count;
+    if(count<=0){
+      clearInterval(autoPickTimer);
+      autoPickTimer=null;
+      // Fire the pick — re-check player still available
+      const stillAvail=d.players.filter(p=>!p.drafted).sort((a,b)=>
+        a.rating-b.rating||b.ageDays-a.ageDays||a.lastName.localeCompare(b.lastName));
+      if(stillAvail.length&&d.currentPick<d.draftOrder.length){
+        // Still same coach's turn?
+        const pick=d.draftOrder[d.currentPick];
+        if(d.autoCoaches.has(pick.teamIdx)){
+          executePick(dk,stillAvail[0]);
+          safeSave();
+        }
+      }
+    }
+  },500);
+}
+
+// Cancel pending auto-pick if user manually picks or undoes
+function cancelAutoPick(dk){
+  if(autoPickTimer){clearInterval(autoPickTimer);autoPickTimer=null;}
+  const preview=document.getElementById('auto-preview-'+dk);
+  if(preview)preview.classList.remove('show');
+}
+
+// ===================== BOARD SEARCH =====================
+function boardSearch(dk, q){
+  const container=document.getElementById('board-container-'+dk);
+  if(!container)return;
+  const allPicks=container.querySelectorAll('.board-pick');
+  const term=(q||'').trim().toLowerCase();
+  if(!term){
+    allPicks.forEach(el=>{el.classList.remove('board-highlight','board-dim');});
+    return;
+  }
+  allPicks.forEach(el=>{
+    const nameEl=el.querySelector('.pick-player');
+    const name=(nameEl?.textContent||'').toLowerCase();
+    if(name&&name.includes(term)){
+      el.classList.add('board-highlight');
+      el.classList.remove('board-dim');
+    } else if(nameEl){
+      // Has a player but no match — dim it
+      el.classList.add('board-dim');
+      el.classList.remove('board-highlight');
+    } else {
+      // Empty slot — neutral
+      el.classList.remove('board-highlight','board-dim');
+    }
+  });
+}
+
+// ===================== DONE SEARCH =====================
+function doneSearch(dk,cmd){
+  const d=state.divs[dk];
+  const inp=document.getElementById('done-search-'+dk);
+  if(!inp)return;
+  if(cmd==='clear'){inp.value='';doneSearch(dk);return;}
+  const q=inp.value.trim().toLowerCase();
+  const resultBox=document.getElementById('done-search-result-'+dk);
+  const allItems=document.querySelectorAll('#done-roster-grid-'+dk+' .roster-player-item');
+  const allCards=document.querySelectorAll('#done-roster-grid-'+dk+' .roster-card');
+  // Reset
+  allItems.forEach(el=>{el.classList.remove('search-match','search-hidden');});
+  allCards.forEach(el=>el.classList.remove('search-empty'));
+  if(resultBox)resultBox.classList.remove('open');
+  if(!q)return;
+  // Find first match in picks
+  const match=d.picks.find(pk=>pk.player&&(pk.player.firstName+' '+pk.player.lastName).toLowerCase().includes(q));
+  if(match){
+    const teamName=d.coaches[match.teamIdx]?.name||'Unknown';
+    const typeLabel=match.type==='pre'?'Pre-Assigned':match.type==='admin'?'Admin Assigned':'Round '+match.round+', Pick '+match.pickNum;
+    document.getElementById('dsr-name-'+dk).textContent=match.player.firstName+' '+match.player.lastName;
+    document.getElementById('dsr-team-'+dk).textContent='Drafted by: '+teamName;
+    document.getElementById('dsr-meta-'+dk).textContent=(match.player.position||'')+(match.player.position&&match.player.rating!==99?' · ':'')+(match.player.rating!==99?'★'+match.player.rating:'');
+    document.getElementById('dsr-badges-'+dk).innerHTML='<span class="dsr-badge">'+typeLabel+'</span><span class="dsr-badge">★'+(match.player.rating===99?'?':match.player.rating)+'</span><span class="dsr-badge">'+(match.player.jerseySize||'?')+'</span>';
+    if(resultBox)resultBox.classList.add('open');
+    allItems.forEach(el=>{
+      const nm=(el.querySelector('.roster-player-name')?.textContent||'').toLowerCase();
+      if(nm.includes(q))el.classList.add('search-match');else el.classList.add('search-hidden');
+    });
+    allCards.forEach(card=>{
+      if(!card.querySelector('.roster-player-item.search-match'))card.classList.add('search-empty');
+    });
+  } else {
+    allItems.forEach(el=>el.classList.add('search-hidden'));
+    allCards.forEach(el=>el.classList.add('search-empty'));
+    if(resultBox){
+      resultBox.classList.add('open');
+      document.getElementById('dsr-name-'+dk).textContent='No match found';
+      document.getElementById('dsr-team-'+dk).textContent='No player matched "'+inp.value+'"';
+      document.getElementById('dsr-meta-'+dk).textContent='Try a partial name';
+      document.getElementById('dsr-badges-'+dk).innerHTML='';
+    }
+  }
+}
+
+// ===================== PRINT ROSTER =====================
+function printRoster(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  if(!d.players||!d.players.length){alert('No players loaded.');return;}
+
+  const players=[...d.players].sort((a,b)=>{
+    if(a.rating!==b.rating)return a.rating-b.rating;
+    return a.lastName.localeCompare(b.lastName);
+  });
+
+  if(typeof XLSX==='undefined'){
+    alert('Excel library not loaded. Please open via http://localhost:8080 to use this feature.');
+    return;
+  }
+
+  try{
+    const wb=XLSX.utils.book_new();
+
+    // ── Header row ──
+    const headers=['#','First Name','Last Name','Age','Jersey Size','Rating','Position','Core Team','Prior Coach'];
+
+    // ── Data rows ──
+    const rows=players.map((p,i)=>[
+      i+1,
+      p.firstName||'',
+      p.lastName||'',
+      p.birthDate?Math.round(p.ageYears)+'':'',
+      p.jerseySize||'',
+      p.rating===99||p.rating===null?'':p.rating,
+      p.position||'',
+      p.core||'',
+      p.priorCoach||''
+    ]);
+
+    const sheetData=[headers,...rows];
+    const ws=XLSX.utils.aoa_to_sheet(sheetData);
+
+    // ── Column widths ──
+    ws['!cols']=[
+      {wch:4},   // #
+      {wch:14},  // First Name
+      {wch:16},  // Last Name
+      {wch:5},   // Age
+      {wch:10},  // Jersey Size
+      {wch:7},   // Rating
+      {wch:14},  // Position
+      {wch:22},  // Core Team
+      {wch:18},  // Prior Coach
+    ];
+
+    // ── Cell styles ──
+    const numRows=sheetData.length;
+    const numCols=headers.length;
+
+    // Style helpers
+    const headerFill={patternType:'solid',fgColor:{rgb:'1A472A'}};      // dark green
+    const headerFont={bold:true,color:{rgb:'F4C430'},sz:11,name:'Calibri'};
+    const titleFill={patternType:'solid',fgColor:{rgb:'0D2416'}};        // darker green
+    const oddFill={patternType:'solid',fgColor:{rgb:'F0F7F0'}};          // very light green
+    const evenFill={patternType:'solid',fgColor:{rgb:'FFFFFF'}};
+    const ratingColors={1:{rgb:'2ECC71'},2:{rgb:'27AE60'},3:{rgb:'F39C12'},4:{rgb:'E67E22'},5:{rgb:'E74C3C'}};
+    const border={top:{style:'thin',color:{rgb:'C8DCC8'}},bottom:{style:'thin',color:{rgb:'C8DCC8'}},left:{style:'thin',color:{rgb:'C8DCC8'}},right:{style:'thin',color:{rgb:'C8DCC8'}}};
+    const headerBorder={top:{style:'medium',color:{rgb:'F4C430'}},bottom:{style:'medium',color:{rgb:'F4C430'}},left:{style:'thin',color:{rgb:'2D6A4F'}},right:{style:'thin',color:{rgb:'2D6A4F'}}};
+
+    // Add a title row above headers by inserting a row
+    // We use a merged cell approach via ws['!merges']
+    // First, shift all existing data down 1 row
+    const titleRow=[`EBSC Fall 2026 — ${cfg.label} Division Draft Sheet`,'','','','','','','',''];
+    const finalData=[titleRow,headers,...rows];
+    const wsF=XLSX.utils.aoa_to_sheet(finalData);
+    wsF['!cols']=ws['!cols'];
+
+    // Merge title row across all columns
+    wsF['!merges']=[{s:{r:0,c:0},e:{r:0,c:numCols-1}}];
+
+    // Style every cell
+    const colLetter=(c)=>String.fromCharCode(65+c);
+    const totalRows=finalData.length;
+
+    for(let r=0;r<totalRows;r++){
+      for(let c=0;c<numCols;c++){
+        const addr=colLetter(c)+(r+1);
+        if(!wsF[addr])wsF[addr]={t:'s',v:''};
+        const cell=wsF[addr];
+
+        if(r===0){
+          // Title row
+          cell.s={
+            fill:{patternType:'solid',fgColor:{rgb:'0A1A0F'}},
+            font:{bold:true,color:{rgb:'F4C430'},sz:14,name:'Bebas Neue'},
+            alignment:{horizontal:'center',vertical:'center'},
+            border:{bottom:{style:'thick',color:{rgb:'F4C430'}}}
+          };
+        } else if(r===1){
+          // Header row
+          cell.s={
+            fill:headerFill,
+            font:headerFont,
+            alignment:{horizontal:'center',vertical:'center'},
+            border:headerBorder
+          };
+        } else {
+          // Data rows
+          const isOdd=(r%2===0);
+          const isRatingCol=(c===5);
+          const ratingVal=finalData[r][5];
+          let fillColor=isOdd?'EFF7EF':'FFFFFF';
+
+          let font={sz:10,name:'Calibri',color:{rgb:'1A1A1A'}};
+          if(isRatingCol&&ratingVal!==''&&ratingColors[ratingVal]){
+            font={...font,bold:true,color:{rgb:'FFFFFF'}};
+            fillColor=ratingColors[ratingVal].rgb;
+          }
+          // Bold name columns
+          if(c===1||c===2)font={...font,bold:true};
+          // Center certain cols
+          const centered=[0,3,4,5];
+          cell.s={
+            fill:{patternType:'solid',fgColor:{rgb:fillColor}},
+            font,
+            alignment:{horizontal:centered.includes(c)?'center':'left',vertical:'center'},
+            border
+          };
+        }
+      }
+    }
+
+    // Row heights
+    wsF['!rows']=[{hpt:28},...Array(totalRows-1).fill({hpt:18})];
+    wsF['!rows'][1]={hpt:22};
+
+    // Print settings — landscape, fit to 1 page wide
+    wsF['!pageSetup']={orientation:'landscape',fitToWidth:1,fitToHeight:0,fitToPage:true};
+    wsF['!margins']={left:0.5,right:0.5,top:0.75,bottom:0.75,header:0.3,footer:0.3};
+
+    // Add a blank "Draft Tracking" sheet — coaches can write picks on paper
+    const trackHeaders=['Round','Pick','Team / Coach','Player Drafted','Notes'];
+    const trackRows=[[...trackHeaders]];
+    // Generate all snake draft slots
+    const numTeams=cfg.teams;
+    const estRounds=Math.ceil(players.length/numTeams);
+    let pick=1;
+    for(let round=1;round<=estRounds;round++){
+      const fwd=round%2===1;
+      for(let t=0;t<numTeams;t++){
+        const teamNum=fwd?t+1:numTeams-t;
+        trackRows.push([round,pick,'Team '+teamNum,'','']);
+        pick++;
+      }
+    }
+    const wsTrack=XLSX.utils.aoa_to_sheet(trackRows);
+    wsTrack['!cols']=[{wch:7},{wch:6},{wch:18},{wch:22},{wch:20}];
+    // Style track sheet header
+    for(let c=0;c<5;c++){
+      const addr=String.fromCharCode(65+c)+'1';
+      if(wsTrack[addr])wsTrack[addr].s={
+        fill:{patternType:'solid',fgColor:{rgb:'1A472A'}},
+        font:{bold:true,color:{rgb:'F4C430'},sz:11,name:'Calibri'},
+        alignment:{horizontal:'center'},
+        border:{bottom:{style:'medium',color:{rgb:'F4C430'}}}
+      };
+    }
+
+    XLSX.utils.book_append_sheet(wb,wsF,cfg.label+' Roster');
+    XLSX.utils.book_append_sheet(wb,wsTrack,cfg.label+' Draft Tracker');
+    XLSX.writeFile(wb,`EBSC_${cfg.label}_DraftSheet.xlsx`);
+  }catch(err){
+    console.error('Print roster error:',err);
+    alert('Export failed: '+err.message);
+  }
+}
+
+// ===================== EXPORT =====================
+function buildRows(dk){
+  const d=state.divs[dk];
+  const tl={pre:'Pre-Assigned',admin:'Admin Assigned',draft:'Drafted',post:'Post-Draft Add',null:'Undrafted'};
+  const rows=[['Division','First Name','Last Name','Birthdate','Email','Shirt Size','Seasons','WorkBond','Position','Rating','Core','Prior Coach','Notes','Manual Add','Assignment Type','Coach (Team)','Draft Round','Draft Pick']];
+  d.players.forEach(p=>rows.push([
+    p.division||'',p.firstName||'',p.lastName||'',
+    p.birthDate?p.birthDate.toLocaleDateString('en-US'):'',
+    p.email||'',p.jerseySize||'',p.seasons||'',p.workBond||'',p.position||'',
+    (p.rating===99||p.rating===null||p.rating===undefined)?'':p.rating,
+    p.core||'',
+    p.priorCoach||'',
+    p.notes||'',
+    p.manualAdd?'Yes':'No',
+    tl[p.draftType]||'Undrafted',p.draftTeam||'',p.draftRound||'',p.draftPick||''
+  ]));
+  return rows;
+}
+
+function buildTeamRows(dk){
+  const d=state.divs[dk];
+  return d.coaches.map((coach,ti)=>{
+    const picks=d.picks.filter(p=>p.teamIdx===ti);
+    const rows=[['Type','Round','Pick','First Name','Last Name','Birthdate','Shirt Size','Rating','Position','Seasons','WorkBond','Core','Prior Coach','Notes']];
+    [...picks.filter(p=>p.type==='pre'),...picks.filter(p=>p.type==='admin'),...picks.filter(p=>p.type==='draft').sort((a,b)=>(a.pickNum||0)-(b.pickNum||0))]
+      .forEach(pk=>{
+        if(!pk.player)return;
+        rows.push([
+          pk.type==='pre'?'Pre-Assigned':pk.type==='admin'?'Admin':'Draft',
+          pk.round||'',pk.pickNum||'',
+          pk.player.firstName||'',pk.player.lastName||'',
+          pk.player.birthDate?pk.player.birthDate.toLocaleDateString('en-US'):'',
+          pk.player.jerseySize||'',
+          (pk.player.rating===99||pk.player.rating===null)?'':pk.player.rating,
+          pk.player.position||'',pk.player.seasons||'',pk.player.workBond||'',pk.player.core||'',pk.player.priorCoach||'',pk.player.notes||''
+        ]);
+      });
+    const safeName=coach.name.replace(/[^a-zA-Z0-9 ]/g,'').substring(0,25)||('Team '+(ti+1));
+    return{name:safeName,rows};
+  });
+}
+
+function exportDraft(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  if(!d||!d.players||!d.players.length){alert('No draft data to export.');return;}
+
+  if(typeof XLSX!=='undefined'){
+    try{
+      const wb=XLSX.utils.book_new();
+      const ws=XLSX.utils.aoa_to_sheet(buildRows(dk));
+      ws['!cols']=[12,14,14,14,28,12,10,10,14,8,20,40,10,18,20,12,12].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb,ws,cfg.label+' Draft');
+      buildTeamRows(dk).forEach(t=>{
+        XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(t.rows),t.name);
+      });
+      XLSX.writeFile(wb,cfg.label+'_Draft_Results.xlsx');
+      return;
+    }catch(e){
+      console.error('XLSX export error:',e);
+      // fall through to CSV
+    }
+  }
+
+  // CSV — no library needed, always works
+  exportCSV(dk);
+}
+
+function exportCSV(dk){
+  const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
+  if(!d||!d.players||!d.players.length){alert('No draft data to export.');return;}
+  try{
+    const rows=buildRows(dk);
+    const csv=rows.map(r=>r.map(v=>{
+      const sv=String(v===null||v===undefined?'':v);
+      return(sv.includes(',')||sv.includes('"')||sv.includes('\n'))?'"'+sv.replace(/"/g,'""')+'"':sv;
+    }).join(',')).join('\r\n');
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;
+    link.download=cfg.label+'_Draft_Results.csv';
+    link.style.display='none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(()=>{document.body.removeChild(link);URL.revokeObjectURL(url);},1000);
+    alert('Saved as CSV (Excel file requires internet connection for the first load). Open the .csv file in Excel.');
+  }catch(e){
+    alert('Export failed: '+e.message);
+  }
+}
+
+// ===================== TEST DATA =====================
+function loadTestData(dk){
+  const fns=['Liam','Noah','Oliver','James','Elijah','Lucas','Mason','Ethan','Aiden','Logan','Emma','Olivia','Ava','Sophia','Isabella','Mia','Charlotte','Amelia','Harper','Evelyn','Carter','Jayden','Sebastian','Mateo','Jack','Owen','Theodore','Henry','Leo','Lincoln','Aria','Luna','Chloe','Penelope','Layla','Riley','Zoey','Nora','Lily','Eleanor','Grayson','Wyatt','Julian','Levi','Isaac','Dylan','Ezra','Thomas','Ryan','Nathan'];
+  const lns=['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Wilson','Moore','Taylor','Anderson','Thomas','Jackson','White','Harris','Martin','Thompson','Young','Walker','Hall','Allen','King','Wright','Scott','Green','Baker','Adams','Nelson','Carter'];
+  const sizes=['YS','YS','YM','YM','YM','YL','YL','YL','YXL','YXL'];
+  const emails=['gmail.com','yahoo.com','hotmail.com','outlook.com'];
+  const players=[];
+  for(let i=0;i<50;i++){
+    const fn=fns[i];const ln=lns[i%lns.length];
+    const baseMs=new Date('2015-01-01').getTime();
+    const bornDate=new Date(baseMs+Math.random()*2*365.25*24*3600*1000);
+    const ratings=[1,1,2,2,2,3,3,3,4,5];const positions=['Forward','Midfielder','Defender','Goalkeeper','Forward','Midfielder','Defender','Defender','Midfielder','Forward'];
+    players.push({id:i+1,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],core:'',priorCoach:'',notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
+  }
+  finalizePlayers(players,dk);
+}
+
+// ===================== MODALS =====================
+let confirmCB=null;
+function showConfirm(title,msg,cb){
+  document.getElementById('confirmTitle').textContent=title;
+  document.getElementById('confirmMsg').textContent=msg;
+  confirmCB=cb;
+  document.getElementById('confirmModal').classList.add('open');
+  document.getElementById('confirmOk').onclick=()=>{const cb=confirmCB;closeConfirm();if(cb)cb();};
+}
+function closeConfirm(){document.getElementById('confirmModal').classList.remove('open');confirmCB=null;}
+document.getElementById('confirmModal').addEventListener('click',function(e){if(e.target===this)closeConfirm();});
+document.getElementById('adminModal').addEventListener('click',function(e){if(e.target===this)closeAdminModal();});
+document.getElementById('addPlayerModal').addEventListener('click',function(e){if(e.target===this)closeAddPlayerModal();});
+document.getElementById('editPlayerModal').addEventListener('click',function(e){if(e.target===this)closeEditPlayerModal();});
+document.getElementById('reorderModal').addEventListener('click',function(e){if(e.target===this)closeReorderModal();});
+document.getElementById('divSettingsModal').addEventListener('click',function(e){if(e.target===this)closeDivSettings();});
+document.getElementById('postAddPlayerModal').addEventListener('click',function(e){if(e.target===this)closePostAddPlayer();});
+
+function updateHeaderStatus(){
+  const loaded=Object.values(state.divs).filter(d=>d.players.length>0).length;
+  const total=Object.keys(DIV_CONFIG).length;
+  document.getElementById('headerStatus').textContent=`${loaded}/${total} divisions loaded`;
+}
+
+// (Service worker and install prompt removed — standalone HTML mode)
+
+// ===================== LOCALSTORAGE PERSISTENCE =====================
+// (STORAGE_KEY, HISTORY_KEY, safeSave defined early — see top of script)
+
+function showSaveIndicator(){
+  const el=document.getElementById('saveIndicator');
+  if(!el)return;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),1800);
+}
+
+function serializeState(){
+  // Serialize divs state — exclude non-serializable (intervals, functions, selectedPlayer obj)
+  const out={currentDiv:state.currentDiv,divs:{}};
+  for(const dk of ['u9','u10','u1112']){
+    const d=state.divs[dk];
+    out.divs[dk]={
+      divKey:d.divKey,
+      phase:d.phase,
+      coaches:d.coaches,
+      preAssigns:d.preAssigns,
+      timerEnabled:d.timerEnabled,
+      timerSeconds:d.timerSeconds,
+      poolSort:d.poolSort,
+      searchQuery:d.searchQuery,
+      currentPick:d.currentPick,
+      autoCoaches:[...d.autoCoaches],
+      // Serialize players (all fields)
+      players:d.players.map(p=>({
+        id:p.id,division:p.division,firstName:p.firstName,lastName:p.lastName,
+        birthDate:p.birthDate?p.birthDate.toISOString():null,
+        email:p.email,jerseySize:p.jerseySize,seasons:p.seasons,workBond:p.workBond,
+        position:p.position,rating:p.rating,core:p.core,priorCoach:p.priorCoach,notes:p.notes,
+        manualAdd:p.manualAdd||false,
+        ageMs:p.ageMs,ageYears:p.ageYears,ageDays:p.ageDays,rank:p.rank,
+        drafted:p.drafted,draftPick:p.draftPick,draftRound:p.draftRound,
+        draftTeam:p.draftTeam,draftType:p.draftType
+      })),
+      // Serialize picks with player id ref
+      picks:d.picks.map(pk=>({
+        pickNum:pk.pickNum,round:pk.round,teamIdx:pk.teamIdx,type:pk.type,
+        playerId:pk.player?pk.player.id:null
+      })),
+      // Serialize draftOrder
+      draftOrder:d.draftOrder,
+      // Don't save full history (too large) — just the length so undo still works after reload
+      historyLen:d.history?d.history.length:0
+    };
+  }
+  return out;
+}
+
+function deserializeState(saved){
+  for(const dk of ['u9','u10','u1112']){
+    const s=saved.divs[dk];
+    if(!s||!s.players||!s.players.length)continue;
+    const d=state.divs[dk];
+    d.phase=s.phase||'upload';
+    d.coaches=s.coaches||[];
+    d.preAssigns=s.preAssigns||[];
+    d.timerEnabled=s.timerEnabled||false;
+    d.timerSeconds=s.timerSeconds||60;
+    d.poolSort=s.poolSort||'rank';
+    d.searchQuery=s.searchQuery||'';
+    d.currentPick=s.currentPick||0;
+    d.draftOrder=s.draftOrder||[];
+    d.history=[];
+    d.autoCoaches=new Set(s.autoCoaches||[]);
+    // Restore players — re-hydrate dates
+    d.players=s.players.map(p=>({
+      ...p,
+      birthDate:p.birthDate?new Date(p.birthDate):null
+    }));
+    // Re-link picks to player objects
+    d.picks=(s.picks||[]).map(pk=>({
+      ...pk,
+      player:d.players.find(p=>p.id===pk.playerId)||null
+    })).filter(pk=>pk.player);
+  }
+}
+
+function saveState(){
+  try{
+    const serialized=serializeState();
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(serialized));
+    showSaveIndicator();
+  }catch(e){
+    console.warn('Save failed:',e);
+  }
+}
+
+function loadSavedState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw)return false;
+    const saved=JSON.parse(raw);
+    deserializeState(saved);
+    return true;
+  }catch(e){
+    console.warn('Load saved state failed:',e);
+    return false;
+  }
+}
+
+
+
+// ===================== DRAFT HISTORY =====================
+function saveDraftToHistory(dk){
+  try{
+    const d=state.divs[dk];
+    const cfg=DIV_CONFIG[dk];
+    const history=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
+    const entry={
+      id:Date.now(),
+      divKey:dk,
+      label:cfg.label,
+      date:new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}),
+      teams:d.coaches.length,
+      totalPlayers:d.picks.length,
+      coaches:d.coaches.map(c=>c.name),
+      // Save picks summary for history view
+      picks:d.picks.map(pk=>({
+        type:pk.type,round:pk.round,pickNum:pk.pickNum,teamIdx:pk.teamIdx,
+        playerName:(pk.player?pk.player.firstName+' '+pk.player.lastName:''),
+        rating:pk.player?pk.player.rating:99,
+        position:pk.player?pk.player.position:'',
+        jerseySize:pk.player?pk.player.jerseySize:''
+      }))
+    };
+    history.unshift(entry); // newest first
+    // Keep last 20 drafts
+    if(history.length>20)history.splice(20);
+    localStorage.setItem(HISTORY_KEY,JSON.stringify(history));
+  }catch(e){console.warn('History save failed:',e);}
+}
+
+function openHistoryModal(){
+  const history=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
+  const list=document.getElementById('historyList');
+  const empty=document.getElementById('historyEmpty');
+  if(!history.length){
+    list.innerHTML='';
+    empty.style.display='block';
+  } else {
+    empty.style.display='none';
+    list.innerHTML=history.map((e,i)=>`
+      <div class="history-entry" onclick="viewHistoryEntry(${i})">
+        <div class="history-entry-title">${e.label} — ${e.date}</div>
+        <div class="history-entry-meta">${e.totalPlayers} players · ${e.teams} teams · ${e.coaches.join(', ')}</div>
+      </div>`).join('');
+  }
+  document.getElementById('historyModal').classList.add('open');
+}
+
+function viewHistoryEntry(idx){
+  const history=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
+  const entry=history[idx];
+  if(!entry)return;
+  closeHistoryModal();
+  // Build a read-only roster view
+  const cfg=DIV_CONFIG[entry.divKey]||{label:entry.label};
+  const byTeam={};
+  entry.picks.forEach(pk=>{
+    if(!byTeam[pk.teamIdx])byTeam[pk.teamIdx]=[];
+    byTeam[pk.teamIdx].push(pk);
+  });
+  const cards=entry.coaches.map((coach,ti)=>{
+    const picks=(byTeam[ti]||[]);
+    const sum=picks.reduce((s,pk)=>s+(pk.rating!==99?Number(pk.rating)||0:0),0);
+    return`<div class="roster-card">
+      <div class="roster-card-header"><div class="roster-card-coach">${esc(coach)}</div><div class="roster-card-meta">${picks.length} players · ★ ${sum}</div></div>
+      ${picks.map(pk=>`<div class="roster-player-item"><span class="roster-pick-badge">${pk.type==='pre'?'⭐ Pre':pk.type==='admin'?'🛡️ Adm':'R'+pk.round+'·'+pk.pickNum}</span><span class="roster-player-name">${esc(pk.playerName)}</span><span style="font-size:11px;color:var(--gold);font-weight:700;margin-right:4px;">★${pk.rating===99?'?':pk.rating}</span><span class="player-size-badge">${pk.jerseySize||'?'}</span></div>`).join('')}
+    </div>`;
+  }).join('');
+
+  // Inject into current div as a read-only view
+  const dk=entry.divKey;
+  document.getElementById(`app-${dk}`).innerHTML=`
+    <div style="margin-bottom:20px;" class="flex-between">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--gold);">📋 ${entry.label} — ${entry.date}</div>
+        <div style="color:var(--muted);font-size:13px;">Historical draft · read-only</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="restoreCurrentDraft('${dk}')">← Back to Current Draft</button>
+    </div>
+    <div class="roster-grid">${cards}</div>`;
+  switchDiv(dk);
+}
+
+function restoreCurrentDraft(dk){
+  const d=state.divs[dk];
+  if(d.phase==='done')renderDone(dk);
+  else if(d.phase==='draft')renderDraft(dk);
+  else if(d.phase==='setup'||d.phase==='setup-ready')renderSetup(dk);
+  else{document.getElementById(`app-${dk}`).innerHTML=buildUpload(dk);bindDrop(dk);}
+}
+
+function closeHistoryModal(){document.getElementById('historyModal').classList.remove('open');}
+document.getElementById('historyModal').addEventListener('click',function(e){if(e.target===this)closeHistoryModal();});
+
+function clearHistory(){
+  if(confirm('Delete all draft history? This cannot be undone.'))
+    localStorage.removeItem(HISTORY_KEY);
+  closeHistoryModal();
+}
+
+
+</script>
+</body>
+</html>
