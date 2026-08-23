@@ -1169,7 +1169,9 @@ function renderTeamBalance(dk){
     `<span style="color:var(--gold);font-weight:700;">${esc(ranked[0].name)}</span> is currently the strongest roster — avg ★${ranked[0].avg.toFixed(1)} across ${ranked[0].ratedCount} rated pick${ranked[0].ratedCount!==1?'s':''}${ranked[0].total-ranked[0].ratedCount>0?` (${ranked[0].total-ranked[0].ratedCount} unrated)`:''}${ranked.length>1?`, ahead of <span style="color:var(--muted);">${esc(ranked[ranked.length-1].name)}</span> (avg ★${ranked[ranked.length-1].avg.toFixed(1)})`:''}.`
     :`No rated players drafted yet — balance fills in once teams pick players with a numeric rating.`;
 
-  const rows=teams.map(t=>{
+  const unranked=teams.filter(t=>t.avg===null);
+  const displayOrder=[...ranked,...unranked];
+  const rows=displayOrder.map(t=>{
     const rank=rankOf[t.ti];
     const barPct=t.avg!==null?Math.max(6,Math.round((t.avg/5)*100)):0;
     const label=t.avg!==null?`★${t.avg.toFixed(1)}`:'—';
@@ -2713,13 +2715,15 @@ function loadTestData(dk){
   const lns=['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Wilson','Moore','Taylor','Anderson','Thomas','Jackson','White','Harris','Martin','Thompson','Young','Walker','Hall','Allen','King','Wright','Scott','Green','Baker','Adams','Nelson','Carter'];
   const sizes=['YS','YS','YM','YM','YM','YL','YL','YL','YXL','YXL'];
   const emails=['gmail.com','yahoo.com','hotmail.com','outlook.com'];
+  const sampleCoaches=['Coach Reynolds','Coach Patel','Coach Diaz','Coach O\'Brien','Coach Nguyen'];
   const players=[];
   for(let i=0;i<50;i++){
     const fn=fns[i];const ln=lns[i%lns.length];
     const baseMs=new Date('2015-01-01').getTime();
     const bornDate=new Date(baseMs+Math.random()*2*365.25*24*3600*1000);
     const ratings=[1,1,2,2,2,3,3,3,4,5];const positions=['Forward','Midfielder','Defender','Goalkeeper','Forward','Midfielder','Defender','Defender','Midfielder','Forward'];
-    players.push({id:i+1,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],core:'',priorCoach:'',notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
+    const priorCoach=i%5===0?sampleCoaches[(i/5)%sampleCoaches.length]:'';
+    players.push({id:i+1,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],core:'',priorCoach,notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
   }
   finalizePlayers(players,dk);
 }
