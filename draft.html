@@ -1160,6 +1160,9 @@ function computeTeamBalance(dk){
   });
 }
 function renderTeamBalance(dk){
+  return`<div class="card mb-16" style="padding:14px 18px;">${buildTeamBalanceContent(dk,true)}</div>`;
+}
+function buildTeamBalanceContent(dk,showTitle){
   const teams=computeTeamBalance(dk);
   const ranked=teams.filter(t=>t.avg!==null).sort((a,b)=>b.avg-a.avg);
   const rankOf={};ranked.forEach((t,i)=>{rankOf[t.ti]=i+1;});
@@ -1188,15 +1191,18 @@ function renderTeamBalance(dk){
     </div>`;
   }).join('');
 
-  return`<div class="card mb-16" style="padding:14px 18px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
-      <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);">⚖️ Team Balance</span>
+  const titleRow=showTitle?`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);">⚖️ Team Balance</span>
+        <button class="panel-expand-btn" onclick="expandPanel('balance','${dk}')" title="Fullscreen">⛶</button>
+      </div>
       <span style="font-size:10px;color:var(--muted);" title="Average of each team's rated players only (1=weakest, 5=strongest). Unrated players are excluded from the average, not counted as average or weak.">avg rating of rated players · higher ★ = stronger</span>
-    </div>
+    </div>`:`<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">avg rating of rated players · higher ★ = stronger</div>`;
+
+  return`${titleRow}
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${headline}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:2px 24px;">${rows}</div>
-    ${anyPartial?`<div style="font-size:10px;color:var(--muted);margin-top:8px;">Unrated players (no rating on file) are counted toward each team's total but excluded from its average ★.</div>`:''}
-  </div>`;
+    ${anyPartial?`<div style="font-size:10px;color:var(--muted);margin-top:8px;">Unrated players (no rating on file) are counted toward each team's total but excluded from its average ★.</div>`:''}`;
 }
 
 function renderAllRosters(dk){
@@ -2112,7 +2118,8 @@ function expandPanel(panel, dk){
     board:'📋 Draft Board',
     upnext:'📌 Up Next',
     history:'🕒 Pick History',
-    rosters:'Team Rosters'
+    rosters:'Team Rosters',
+    balance:'⚖️ Team Balance'
   };
 
   // Panel-specific large-format HTML
@@ -2151,20 +2158,61 @@ function expandPanel(panel, dk){
     // Bigger roster cards
     const rosterHtml=renderAllRosters(dk).replace(/font-size:11px/g,'font-size:14px').replace(/font-size:10px/g,'font-size:13px').replace(/font-size:9px/g,'font-size:12px').replace(/padding:6px 12px/g,'padding:10px 16px');
     bodyHtml=`<div class="roster-grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;">${rosterHtml}</div>`;
+  } else if(panel==='balance'){
+    // Bigger balance rows — wider name column, taller bars, roomier grid
+    const balHtml=buildTeamBalanceContent(dk,false)
+      .replace(/font-size:12px/g,'font-size:17px')
+      .replace(/font-size:11px/g,'font-size:16px')
+      .replace(/font-size:10px/g,'font-size:14px')
+      .replace(/height:8px/g,'height:16px')
+      .replace(/width:20px;flex:0 0 auto/g,'width:32px;flex:0 0 auto')
+      .replace(/max-width:96px/g,'max-width:200px')
+      .replace(/width:34px;text-align:right/g,'width:56px;text-align:right')
+      .replace(/gap:7px;padding:4px 0/g,'gap:14px;padding:10px 0')
+      .replace(/minmax\(260px,1fr\)/g,'minmax(380px,1fr)')
+      .replace(/gap:2px 24px/g,'gap:14px 40px');
+    bodyHtml=`<div style="max-width:1300px;margin:0 auto;">${balHtml}</div>`;
   }
 
   overlay.innerHTML=`
     <div class="panel-fullscreen-header">
       <span class="panel-fullscreen-title">${titles[panel]||panel}</span>
-      <span style="font-size:13px;color:var(--muted);">Press Esc to close</span>
-      <button onclick="this.closest('.panel-fullscreen-overlay').remove()" style="background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);color:var(--text);border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:1px;">✕ Close</button>
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.15);border-radius:8px;padding:4px;">
+          <button onclick="adjustFsZoom(-0.1)" title="Zoom out" style="background:transparent;border:none;color:var(--text);font-size:16px;font-weight:700;cursor:pointer;padding:4px 10px;border-radius:6px;">－</button>
+          <span class="fs-zoom-label" style="min-width:46px;text-align:center;font-size:13px;color:var(--muted);font-family:'DM Mono',monospace;">100%</span>
+          <button onclick="adjustFsZoom(0.1)" title="Zoom in" style="background:transparent;border:none;color:var(--text);font-size:16px;font-weight:700;cursor:pointer;padding:4px 10px;border-radius:6px;">＋</button>
+          <button onclick="resetFsZoom()" title="Reset zoom" style="background:transparent;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 10px;border-radius:6px;border-left:1.5px solid rgba(255,255,255,.15);margin-left:2px;">Reset</button>
+        </div>
+        <span style="font-size:13px;color:var(--muted);">Press Esc to close</span>
+        <button onclick="this.closest('.panel-fullscreen-overlay').remove()" style="background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);color:var(--text);border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:1px;">✕ Close</button>
+      </div>
     </div>
     <div class="panel-fullscreen-body">${bodyHtml}</div>`;
 
   document.body.appendChild(overlay);
+  applyFsZoom();
 
   const onEsc=e=>{if(e.key==='Escape'){overlay.remove();document.removeEventListener('keydown',onEsc);}};
   document.addEventListener('keydown',onEsc);
+}
+
+// Zoom level persists across panels/opens within a session — handy for TVs where
+// coaches tend to pick one comfortable size and leave it there.
+let fsZoomLevel=1;
+function adjustFsZoom(delta){
+  fsZoomLevel=Math.max(0.5,Math.min(3,+(fsZoomLevel+delta).toFixed(2)));
+  applyFsZoom();
+}
+function resetFsZoom(){
+  fsZoomLevel=1;
+  applyFsZoom();
+}
+function applyFsZoom(){
+  const body=document.querySelector('.panel-fullscreen-overlay .panel-fullscreen-body');
+  if(body)body.style.zoom=fsZoomLevel;
+  const label=document.querySelector('.panel-fullscreen-overlay .fs-zoom-label');
+  if(label)label.textContent=Math.round(fsZoomLevel*100)+'%';
 }
 
 function renderPoolFiltered(dk,q){
