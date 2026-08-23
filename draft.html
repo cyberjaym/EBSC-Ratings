@@ -774,7 +774,7 @@ function renderSetup(dk){
       <span class="player-rank">#${p.rank}</span>
       <div class="player-info">
         <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}</div>
-        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.core?' · <span style="color:#74b9ff;font-weight:600;">⚽ '+esc(p.core)+'</span>':''}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">👤 '+esc(p.priorCoach)+'</span>':''}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.core?' · <span style="color:#74b9ff;font-weight:600;">⚽ '+esc(p.core)+'</span>':''}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">'+esc(p.priorCoach)+'</span>':''}</div>
       </div>
       <span style="font-size:12px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:2px 8px;border-radius:4px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
     </div>`).join(''):`<div class="empty-state" style="padding:20px;"><div>✅</div>All players assigned</div>`;
@@ -899,7 +899,7 @@ function renderSetupPool(dk){
       <span class="player-rank">#${p.rank}</span>
       <div class="player-info">
         <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}</div>
-        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.core?' · <span style="color:#74b9ff;font-weight:600;">⚽ '+esc(p.core)+'</span>':''}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">👤 '+esc(p.priorCoach)+'</span>':''}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')}${p.core?' · <span style="color:#74b9ff;font-weight:600;">⚽ '+esc(p.core)+'</span>':''}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">'+esc(p.priorCoach)+'</span>':''}</div>
       </div>
       <span style="font-size:12px;font-weight:800;color:var(--gold);background:rgba(244,196,48,.18);padding:2px 8px;border-radius:4px;white-space:nowrap;">★${p.rating===99?'?':p.rating}</span>
     </div>`).join(''):`<div class="empty-state" style="padding:20px;"><div>✅</div>All players assigned</div>`;
@@ -1262,7 +1262,7 @@ function renderPool(dk){
       </div>
       <div class="player-info">
         <div class="player-name-row">${esc(p.firstName)} ${esc(p.lastName)}${p.manualAdd?'<span class="manual-badge">MANUAL</span>':''}</div>
-        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')} · ${p.seasons?esc(p.seasons)+' seasons':'—'}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">👤 '+esc(p.priorCoach)+'</span>':''}</div>
+        <div class="player-meta">${fmtAge(p)} · ${esc(p.position||'—')} · ${p.seasons?esc(p.seasons)+' seasons':'—'}${p.priorCoach?' · <span style="color:#c39bd3;font-weight:600;">'+esc(p.priorCoach)+'</span>':''}</div>
         ${p.core?`<div style="margin-top:2px;"><span class="core-badge">⚽ ${esc(p.core)}</span></div>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
