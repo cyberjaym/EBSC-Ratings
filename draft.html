@@ -383,9 +383,11 @@
     <div class="add-player-form">
       <div class="field"><div class="label">First Name <span style="color:var(--danger);">*</span></div><input type="text" id="pap-firstName" placeholder="Required"></div>
       <div class="field"><div class="label">Last Name <span style="color:var(--danger);">*</span></div><input type="text" id="pap-lastName" placeholder="Required"></div>
+      <div class="field"><div class="label">Org Member ID</div><input type="text" id="pap-orgMemberId"></div>
       <div class="field"><div class="label">Division</div><input type="text" id="pap-division" placeholder="e.g. U9"></div>
       <div class="field"><div class="label">Birthdate</div><input type="text" id="pap-birthdate" placeholder="MM/DD/YYYY"></div>
       <div class="field"><div class="label">Email</div><input type="text" id="pap-email"></div>
+      <div class="field"><div class="label">Phone Number</div><input type="text" id="pap-phone"></div>
       <div class="field"><div class="label">Shirt Size</div><input type="text" id="pap-shirtSize" placeholder="YM, YL..."></div>
       <div class="field"><div class="label">Seasons</div><input type="text" id="pap-seasons"></div>
       <div class="field"><div class="label">Position</div><input type="text" id="pap-position"></div>
@@ -431,9 +433,11 @@
     <div class="edit-player-grid">
       <div class="field"><div class="label">First Name <span style="color:var(--danger);">*</span></div><input type="text" id="ep-firstName" placeholder="Required"></div>
       <div class="field"><div class="label">Last Name <span style="color:var(--danger);">*</span></div><input type="text" id="ep-lastName" placeholder="Required"></div>
+      <div class="field"><div class="label">Org Member ID</div><input type="text" id="ep-orgMemberId"></div>
       <div class="field"><div class="label">Division</div><input type="text" id="ep-division" placeholder="e.g. U9"></div>
       <div class="field"><div class="label">Birthdate</div><input type="text" id="ep-birthdate" placeholder="MM/DD/YYYY"></div>
       <div class="field"><div class="label">Email</div><input type="text" id="ep-email"></div>
+      <div class="field"><div class="label">Phone Number</div><input type="text" id="ep-phone"></div>
       <div class="field"><div class="label">Shirt Size</div><input type="text" id="ep-shirtSize" placeholder="YM, YL..."></div>
       <div class="field"><div class="label">Seasons</div><input type="text" id="ep-seasons"></div>
       <div class="field"><div class="label">Position</div><input type="text" id="ep-position"></div>
@@ -456,11 +460,13 @@
     <h2>➕ Add Player to Pool</h2>
     <p class="modal-sub">Manually add a player to the draft pool. They will be ranked and drafted like any other player. Only First Name and Last Name are required.</p>
     <div class="add-player-form">
+      <div class="field"><div class="label">Org Member ID</div><input type="text" id="ap-orgMemberId"></div>
       <div class="field"><div class="label">Division</div><input type="text" id="ap-division" placeholder="e.g. U9"></div>
       <div class="field"><div class="label">First Name <span style="color:var(--danger);">*</span></div><input type="text" id="ap-firstName" placeholder="Required"></div>
       <div class="field"><div class="label">Last Name <span style="color:var(--danger);">*</span></div><input type="text" id="ap-lastName" placeholder="Required"></div>
       <div class="field"><div class="label">Birthdate</div><input type="text" id="ap-birthdate" placeholder="MM/DD/YYYY"></div>
       <div class="field"><div class="label">Email</div><input type="text" id="ap-email" placeholder="parent@email.com"></div>
+      <div class="field"><div class="label">Phone Number</div><input type="text" id="ap-phone"></div>
       <div class="field"><div class="label">Shirt Size</div><input type="text" id="ap-shirtSize" placeholder="e.g. YM, YL"></div>
       <div class="field"><div class="label">Seasons</div><input type="text" id="ap-seasons" placeholder="e.g. 2"></div>
       <div class="field"><div class="label">WorkBond</div><input type="text" id="ap-workBond" placeholder=""></div>
@@ -611,7 +617,7 @@ function buildUpload(dk){
     <div class="card mb-16" style="max-width:680px;margin-left:auto;margin-right:auto;">
       <div class="card-header"><span class="card-title">📂 Load Roster File</span><span class="badge badge-gold">${cfg.teams} Teams</span></div>
       <div class="card-body">
-        <div class="alert alert-info">ℹ️ Columns (in order): Division · First Name · Last Name · Birth Date · Parent Email · Jersey Size · Parent Is Coach · Prior Coach · Has Sibling</div>
+        <div class="alert alert-info">ℹ️ Columns (in order): Org Member ID · Division · First Name · Last Name · Birth Date · Parent Email · Phone Number · Jersey Size · Parent Is Coach · Prior Coach · Has Sibling</div>
         <div style="text-align:right;margin-top:-4px;margin-bottom:14px;">
           <button onclick="downloadRosterTemplate('${dk}')" style="background:transparent;border:none;color:var(--line);font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;letter-spacing:.3px;">⬇ Download blank roster template (.xlsx)</button>
         </div>
@@ -644,11 +650,13 @@ function handleFile(e,dk){const f=e.target.files[0];if(f)parseFile(f,dk);}
 function mapHeaders(hdr){
   const idx={};
   const aliases={
+    orgMemberId:['org member id','org member','member id','orgmemberid','memberid'],
     division:['division'],
     firstName:['first name','firstname'],
     lastName:['last name','lastname'],
     birthDate:['birthdate','birth date','dob'],
     email:['email','e-mail','parent email'],
+    phone:['phone number','phone','cell number','cell','mobile'],
     jerseySize:['shirt size','jersey size','shirt','size'],
     seasons:['seasons','season'],
     workBond:['workbond','work bond','parent is coach','parent coach'],
@@ -682,11 +690,13 @@ function parseFile(file,dk){
         const row=rows[i];if(!row||row.every(c=>!c))continue;
         const p={
           id:i,
+          orgMemberId:get(row,'orgMemberId'),
           division:get(row,'division'),
           firstName:get(row,'firstName'),
           lastName:get(row,'lastName'),
           birthDate:parseDOB(get(row,'birthDate')),
           email:get(row,'email'),
+          phone:get(row,'phone'),
           jerseySize:get(row,'jerseySize').toUpperCase(),
           seasons:get(row,'seasons'),
           workBond:get(row,'workBond'),
@@ -1370,7 +1380,7 @@ function openAddPlayerModal(dk){
   // Store divKey on modal
   document.getElementById('addPlayerModal').dataset.dk=dk;
   // Clear all fields
-  ['division','firstName','lastName','birthdate','email','shirtSize','seasons','workBond','position','rating','core','priorCoach']
+  ['orgMemberId','division','firstName','lastName','birthdate','email','phone','shirtSize','seasons','workBond','position','rating','core','priorCoach']
     .forEach(f=>{const el=document.getElementById('ap-'+f);if(el)el.value='';});
   document.getElementById('ap-hasSibling').checked=false;
   // Pre-fill division from current div
@@ -1406,11 +1416,13 @@ function submitAddPlayer(){
   const maxId=d.players.reduce((m,p)=>Math.max(m,p.id),0);
   const newPlayer={
     id:maxId+1,
+    orgMemberId:document.getElementById('ap-orgMemberId').value.trim(),
     division:document.getElementById('ap-division').value.trim(),
     firstName,
     lastName,
     birthDate,
     email:document.getElementById('ap-email').value.trim(),
+    phone:document.getElementById('ap-phone').value.trim(),
     jerseySize:document.getElementById('ap-shirtSize').value.trim().toUpperCase(),
     seasons:document.getElementById('ap-seasons').value.trim(),
     workBond:document.getElementById('ap-workBond').value.trim(),
@@ -1907,7 +1919,7 @@ function openPostAddPlayer(dk){
   // Pre-fill division
   document.getElementById('pap-division').value=DIV_CONFIG[dk]?.label||'';
   // Clear other fields
-  ['firstName','lastName','birthdate','email','shirtSize','seasons','position','rating','core','priorCoach']
+  ['orgMemberId','firstName','lastName','birthdate','email','phone','shirtSize','seasons','position','rating','core','priorCoach']
     .forEach(f=>{const el=document.getElementById('pap-'+f);if(el)el.value='';});
   document.getElementById('pap-hasSibling').checked=false;
   document.getElementById('pap-error').style.display='none';
@@ -1944,9 +1956,11 @@ function submitPostAddPlayer(keepOpen){
 
   const player={
     id:maxId+1,
+    orgMemberId:document.getElementById('pap-orgMemberId').value.trim(),
     division:document.getElementById('pap-division').value.trim(),
     firstName,lastName,birthDate,
     email:document.getElementById('pap-email').value.trim(),
+    phone:document.getElementById('pap-phone').value.trim(),
     jerseySize:document.getElementById('pap-shirtSize').value.trim().toUpperCase(),
     seasons:document.getElementById('pap-seasons').value.trim(),
     workBond:'',
@@ -1970,7 +1984,7 @@ function submitPostAddPlayer(keepOpen){
     document.getElementById('pap-firstName').value='';
     document.getElementById('pap-lastName').value='';
     document.getElementById('pap-teamSelect').value='';
-    ['birthdate','email','shirtSize','seasons','position','rating','core','priorCoach']
+    ['orgMemberId','birthdate','email','phone','shirtSize','seasons','position','rating','core','priorCoach']
       .forEach(f=>{const el=document.getElementById('pap-'+f);if(el)el.value='';});
     document.getElementById('pap-hasSibling').checked=false;
     document.getElementById('pap-firstName').focus();
@@ -2254,9 +2268,11 @@ function openEditPlayer(dk,pid){
 
   document.getElementById('ep-firstName').value=p.firstName||'';
   document.getElementById('ep-lastName').value=p.lastName||'';
+  document.getElementById('ep-orgMemberId').value=p.orgMemberId||'';
   document.getElementById('ep-division').value=p.division||'';
   document.getElementById('ep-birthdate').value=p.birthDate?p.birthDate.toLocaleDateString('en-US'):'';
   document.getElementById('ep-email').value=p.email||'';
+  document.getElementById('ep-phone').value=p.phone||'';
   document.getElementById('ep-shirtSize').value=p.jerseySize||'';
   document.getElementById('ep-seasons').value=p.seasons||'';
   document.getElementById('ep-position').value=p.position||'';
@@ -2293,6 +2309,7 @@ function submitEditPlayer(){
   // Apply changes
   p.firstName=firstName;
   p.lastName=lastName;
+  p.orgMemberId=document.getElementById('ep-orgMemberId').value.trim();
   p.division=document.getElementById('ep-division').value.trim();
   const bd=parseDOB(document.getElementById('ep-birthdate').value.trim());
   if(bd){
@@ -2302,6 +2319,7 @@ function submitEditPlayer(){
     p.ageDays=Math.floor(p.ageMs/(24*3600*1000));
   }
   p.email=document.getElementById('ep-email').value.trim();
+  p.phone=document.getElementById('ep-phone').value.trim();
   p.jerseySize=document.getElementById('ep-shirtSize').value.trim().toUpperCase();
   p.seasons=document.getElementById('ep-seasons').value.trim();
   p.position=document.getElementById('ep-position').value.trim();
@@ -2691,11 +2709,11 @@ function printRoster(dk){
 function buildRows(dk){
   const d=state.divs[dk];
   const tl={pre:'Pre-Assigned',admin:'Admin Assigned',draft:'Drafted',post:'Post-Draft Add',null:'Undrafted'};
-  const rows=[['Division','First Name','Last Name','Birthdate','Email','Shirt Size','Seasons','WorkBond','Position','Rating','Core','Prior Coach','Has Sibling','Notes','Manual Add','Assignment Type','Coach (Team)','Draft Round','Draft Pick']];
+  const rows=[['Org Member ID','Division','First Name','Last Name','Birthdate','Email','Phone Number','Shirt Size','Seasons','WorkBond','Position','Rating','Core','Prior Coach','Has Sibling','Notes','Manual Add','Assignment Type','Coach (Team)','Draft Round','Draft Pick']];
   d.players.forEach(p=>rows.push([
-    p.division||'',p.firstName||'',p.lastName||'',
+    p.orgMemberId||'',p.division||'',p.firstName||'',p.lastName||'',
     p.birthDate?p.birthDate.toLocaleDateString('en-US'):'',
-    p.email||'',p.jerseySize||'',p.seasons||'',p.workBond||'',p.position||'',
+    p.email||'',p.phone||'',p.jerseySize||'',p.seasons||'',p.workBond||'',p.position||'',
     (p.rating===99||p.rating===null||p.rating===undefined)?'':p.rating,
     p.core||'',
     p.priorCoach||'',
@@ -2711,15 +2729,17 @@ function buildTeamRows(dk){
   const d=state.divs[dk];
   return d.coaches.map((coach,ti)=>{
     const picks=d.picks.filter(p=>p.teamIdx===ti);
-    const rows=[['Type','Round','Pick','First Name','Last Name','Birthdate','Shirt Size','Rating','Position','Seasons','WorkBond','Core','Prior Coach','Has Sibling','Notes']];
+    const rows=[['Org Member ID','Type','Round','Pick','First Name','Last Name','Birthdate','Phone Number','Shirt Size','Rating','Position','Seasons','WorkBond','Core','Prior Coach','Has Sibling','Notes']];
     [...picks.filter(p=>p.type==='pre'),...picks.filter(p=>p.type==='admin'),...picks.filter(p=>p.type==='draft').sort((a,b)=>(a.pickNum||0)-(b.pickNum||0))]
       .forEach(pk=>{
         if(!pk.player)return;
         rows.push([
+          pk.player.orgMemberId||'',
           pk.type==='pre'?'Pre-Assigned':pk.type==='admin'?'Admin':'Draft',
           pk.round||'',pk.pickNum||'',
           pk.player.firstName||'',pk.player.lastName||'',
           pk.player.birthDate?pk.player.birthDate.toLocaleDateString('en-US'):'',
+          pk.player.phone||'',
           pk.player.jerseySize||'',
           (pk.player.rating===99||pk.player.rating===null)?'':pk.player.rating,
           pk.player.position||'',pk.player.seasons||'',pk.player.workBond||'',pk.player.core||'',pk.player.priorCoach||'',pk.player.hasSibling?'Yes':'',pk.player.notes||''
@@ -2787,10 +2807,10 @@ function downloadRosterTemplate(dk){
     return;
   }
   try{
-    const headers=['Division','First Name','Last Name','Birth Date','Parent Email','Jersey Size','Parent Is Coach','Prior Coach','Has Sibling'];
-    const example=[cfg.label,'Jane','Doe','2016-04-12','jane.parent@email.com','YM','No','Coach Smith','Yes'];
+    const headers=['Org Member ID','Division','First Name','Last Name','Birth Date','Parent Email','Phone Number','Jersey Size','Parent Is Coach','Prior Coach','Has Sibling'];
+    const example=['123456',cfg.label,'Jane','Doe','2016-04-12','jane.parent@email.com','555-123-4567','YM','No','Coach Smith','Yes'];
     const ws=XLSX.utils.aoa_to_sheet([headers,example]);
-    ws['!cols']=[{wch:10},{wch:14},{wch:14},{wch:12},{wch:26},{wch:12},{wch:15},{wch:18},{wch:12}];
+    ws['!cols']=[{wch:14},{wch:10},{wch:14},{wch:14},{wch:12},{wch:26},{wch:14},{wch:12},{wch:15},{wch:18},{wch:12}];
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'Roster');
     XLSX.writeFile(wb,`EBSC_${cfg.label}_Roster_Template.xlsx`);
@@ -2814,7 +2834,9 @@ function loadTestData(dk){
     const ratings=[1,1,2,2,2,3,3,3,4,5];const positions=['Forward','Midfielder','Defender','Goalkeeper','Forward','Midfielder','Defender','Defender','Midfielder','Forward'];
     const priorCoach=i%5===0?sampleCoaches[(i/5)%sampleCoaches.length]:'';
     const hasSibling=i%3===0;
-    players.push({id:i+1,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],core:'',priorCoach,hasSibling,notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
+    const orgMemberId=String(100000+i);
+    const phone=`555-${String(200+i).padStart(3,'0')}-${String(1000+i*7%9000).padStart(4,'0')}`;
+    players.push({id:i+1,orgMemberId,division:'U9',firstName:fn,lastName:ln,birthDate:bornDate,email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${emails[i%emails.length]}`,phone,jerseySize:sizes[i%sizes.length],seasons:String(Math.floor(Math.random()*4)+1),workBond:'',position:positions[i%positions.length],rating:ratings[i%ratings.length],core:'',priorCoach,hasSibling,notes:'',drafted:false,draftPick:null,draftRound:null,draftTeam:null,draftType:null});
   }
   finalizePlayers(players,dk);
 }
@@ -2873,9 +2895,9 @@ function serializeState(){
       autoCoaches:[...d.autoCoaches],
       // Serialize players (all fields)
       players:d.players.map(p=>({
-        id:p.id,division:p.division,firstName:p.firstName,lastName:p.lastName,
+        id:p.id,orgMemberId:p.orgMemberId,division:p.division,firstName:p.firstName,lastName:p.lastName,
         birthDate:p.birthDate?p.birthDate.toISOString():null,
-        email:p.email,jerseySize:p.jerseySize,seasons:p.seasons,workBond:p.workBond,
+        email:p.email,phone:p.phone,jerseySize:p.jerseySize,seasons:p.seasons,workBond:p.workBond,
         position:p.position,rating:p.rating,core:p.core,priorCoach:p.priorCoach,hasSibling:p.hasSibling,notes:p.notes,
         manualAdd:p.manualAdd||false,
         ageMs:p.ageMs,ageYears:p.ageYears,ageDays:p.ageDays,rank:p.rank,
