@@ -83,11 +83,11 @@
   /* PRE-ASSIGN PANEL */
   .preassign-layout{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .preassign-pool{max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
-  .pa-player-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card2);border-radius:7px;border:1px solid rgba(255,255,255,.05);cursor:pointer;transition:all .15s;}
+  .pa-player-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card2);border-radius:7px;border:1px solid rgba(255,255,255,.05);cursor:pointer;transition:all .15s;flex-shrink:0;}
   .pa-player-row:hover{background:var(--card3);border-color:var(--gold);}
   .pa-player-row.selected{background:rgba(244,196,48,.12);border-color:var(--gold);}
   .pa-team-cols{display:flex;flex-direction:column;gap:8px;max-height:380px;overflow-y:auto;}
-  .pa-team-block{background:var(--card2);border-radius:8px;border:1px solid rgba(255,255,255,.06);overflow:hidden;}
+  .pa-team-block{background:var(--card2);border-radius:8px;border:1px solid rgba(255,255,255,.06);overflow:hidden;flex-shrink:0;}
   .pa-team-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--card3);border-bottom:1.5px solid var(--gold);}
   .pa-team-name{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--gold);}
   .pa-player-entry{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
