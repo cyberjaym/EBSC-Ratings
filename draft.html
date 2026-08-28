@@ -1889,7 +1889,10 @@ function reinstateDivision(dk){
   d.currentPick=restored.currentPick||0;
   d.draftOrder=restored.draftOrder||[];
   d.picks=[];d.history=[];
-  if(restored.players)d.players=restored.players;
+  if(restored.players){
+    d.players=restored.players;
+    d.players.filter(p=>!p.drafted).sort(compareRank).forEach((p,i)=>{p.rank=i+1;});
+  }
   delete state.removedDivs[dk];
   // Show app div and render correct phase
   const appEl=document.getElementById('app-'+dk);
@@ -2921,6 +2924,8 @@ function deserializeState(saved){
     d.autoCoaches=new Set(s.autoCoaches||[]);
     // Restore players
     d.players=s.players;
+    // Re-rank undrafted players in case they were saved under an older ranking order
+    d.players.filter(p=>!p.drafted).sort(compareRank).forEach((p,i)=>{p.rank=i+1;});
     // Re-link picks to player objects
     d.picks=(s.picks||[]).map(pk=>({
       ...pk,
