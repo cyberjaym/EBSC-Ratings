@@ -510,7 +510,7 @@ function freshDiv(k){
   return{divKey:k,phase:'upload',players:[],coaches:[],
     preAssigns:[],   // [{playerId, teamIdx}] — set in Setup before draft
     picks:[],draftOrder:[],currentPick:0,history:[],autoCoaches:new Set(),
-    timerEnabled:false,timerSeconds:60,timerRemaining:0,timerInterval:null,
+    timerEnabled:false,timerSeconds:60,timerRemaining:0,timerInterval:null,timerPaused:false,
     selectedPlayer:null,searchQuery:'',poolSort:'rank',
     setupSelectedPlayerId:null // for setup pre-assign panel
   };
@@ -1001,15 +1001,31 @@ function buildSnake(teams,rounds){
 }
 
 // ===================== START DRAFT =====================
+function confirmResetDraft(dk){
+  const d=state.divs[dk];
+  const cfg=DIV_CONFIG[dk];
+  const pickCount=d.picks.filter(p=>p.type==='draft'||p.type==='admin').length;
+  showConfirm(
+    '↺ Reset Draft',
+    `Clear all ${pickCount} pick${pickCount!==1?'s':''} made so far and restart ${cfg.label} from Round 1? Coaches, draft order, and pre-assigned players are kept — this cannot be undone.`,
+    ()=>startDraft(dk)
+  );
+}
 function startDraft(dk){
   const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
-  const timerEnabled=document.getElementById(`timer-en-${dk}`)?.checked||false;
-  const timerSec=parseInt(document.getElementById(`timer-sec-${dk}`)?.value||'60');
+  // Setup screen's timer controls only exist before the draft starts — if this is a
+  // reset/restart of an already-running draft, keep whatever timer setting it already had.
+  const timerCheckboxEl=document.getElementById(`timer-en-${dk}`);
+  const timerEnabled=timerCheckboxEl?timerCheckboxEl.checked:d.timerEnabled;
+  const timerSecEl=document.getElementById(`timer-sec-${dk}`);
+  const timerSec=timerSecEl?(parseInt(timerSecEl.value)||60):d.timerSeconds;
+
+  if(d.timerInterval){clearInterval(d.timerInterval);d.timerInterval=null;}
 
   // Reset player states
   d.players.forEach(p=>{p.drafted=false;p.draftPick=null;p.draftRound=null;p.draftTeam=null;p.draftType=null;});
   d.picks=[];d.history=[];d.currentPick=0;d.selectedPlayer=null;d.searchQuery='';
-  d.timerEnabled=timerEnabled;d.timerSeconds=timerSec;d.timerRemaining=timerSec;
+  d.timerEnabled=timerEnabled;d.timerSeconds=timerSec;d.timerRemaining=timerSec;d.timerPaused=false;
 
   // Apply pre-assigns — resolve by coachName first for safety
   d.preAssigns.forEach(a=>{
@@ -1054,6 +1070,7 @@ function renderDraft(dk){
         <button class="btn btn-outline btn-sm" onclick="openReorderModal('${dk}')" ${isDone?'disabled':''} style="border-color:rgba(244,196,48,.5);color:var(--gold);">↕ Reorder</button>
         <button class="btn btn-outline btn-sm" onclick="addRound('${dk}')" style="border-color:rgba(116,185,255,.5);color:#74b9ff;">➕ Round</button>
         <button class="btn btn-outline btn-sm" onclick="printRoster('${dk}')" style="border-color:rgba(82,183,136,.5);color:var(--line);" title="Export print-ready draft sheet">🖨 Print Sheet</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmResetDraft('${dk}')" title="Clear all picks and restart from Round 1">↺ Reset Draft</button>
         <button class="btn btn-gold" onclick="finalize('${dk}')" style="font-size:14px;padding:10px 28px;${isDone?'animation:glow 1s infinite alternate':'opacity:.8'}">✅ Finalize Draft →</button>
       </div>
     </div>
@@ -1134,7 +1151,10 @@ function renderClock(dk){
     <div class="clock-label">On The Clock</div>
     <div class="clock-team">${esc(coach?.name||'?')}</div>
     <div class="clock-meta">Round ${pick.round} · Pick ${pick.pickNum} ${pick.dir}</div>
-    ${d.timerEnabled?`<div class="clock-timer ${urg?'urgent':''}" id="clock-timer-${dk}">${fmtTime(d.timerRemaining)}</div><div class="timer-bar"><div class="timer-fill ${urg?'urgent':''}" id="timer-fill-${dk}" style="width:${pct}%"></div></div>`:''}
+    ${d.timerEnabled?`<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:2px;">
+      <div class="clock-timer ${urg?'urgent':''}" id="clock-timer-${dk}">${fmtTime(d.timerRemaining)}</div>
+      <button onclick="${d.timerPaused?`resumeTimer('${dk}')`:`pauseTimer('${dk}')`}" title="${d.timerPaused?'Resume timer':'Pause timer'}" style="background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);color:var(--text);border-radius:8px;padding:5px 11px;font-size:15px;cursor:pointer;line-height:1;">${d.timerPaused?'▶':'⏸'}</button>
+    </div><div class="timer-bar"><div class="timer-fill ${urg?'urgent':''}" id="timer-fill-${dk}" style="width:${pct}%"></div></div>${d.timerPaused?`<div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px;">⏸ Paused</div>`:''}`:''}
   </div>`;
 }
 function fmtTime(s){return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
@@ -1304,12 +1324,33 @@ function startTimer(dk){
   const d=state.divs[dk];
   if(d.timerInterval)clearInterval(d.timerInterval);
   d.timerRemaining=d.timerSeconds;
+  d.timerPaused=false;
+  runTimerInterval(dk);
+}
+function runTimerInterval(dk){
+  const d=state.divs[dk];
+  if(d.timerInterval)clearInterval(d.timerInterval);
   d.timerInterval=setInterval(()=>{
     if(d.phase!=='draft'||d.currentPick>=d.draftOrder.length){clearInterval(d.timerInterval);return;}
     d.timerRemaining--;
     if(d.timerRemaining<=0){clearInterval(d.timerInterval);autoPickOne(dk);return;}
     updateTimerUI(dk);
   },1000);
+}
+function pauseTimer(dk){
+  const d=state.divs[dk];
+  if(d.timerInterval){clearInterval(d.timerInterval);d.timerInterval=null;}
+  d.timerPaused=true;
+  renderDraft(dk);
+  safeSave();
+}
+function resumeTimer(dk){
+  const d=state.divs[dk];
+  if(d.timerInterval||d.timerRemaining<=0)return;
+  d.timerPaused=false;
+  runTimerInterval(dk);
+  renderDraft(dk);
+  safeSave();
 }
 function updateTimerUI(dk){
   const d=state.divs[dk];
