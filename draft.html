@@ -699,11 +699,7 @@ function parseFile(file,dk){
   r.readAsArrayBuffer(file);
 }
 function finalizePlayers(players,dk){
-  // Sort: rating asc, then last name
-  players.sort((a,b)=>{
-    if(a.rating!==b.rating)return a.rating-b.rating;
-    return a.lastName.localeCompare(b.lastName);
-  });
+  players.sort(compareRank);
   players.forEach((p,i)=>p.rank=i+1);
   state.divs[dk].players=players;
   state.divs[dk].preAssigns=[];
@@ -722,6 +718,10 @@ function toBool(v){const t=String(v||'').trim().toLowerCase();return t==='y'||t=
 function isCoach(v){if(!v)return false;return['yes','y','true','1','coach','x'].includes(String(v).trim().toLowerCase());}
 function fmtDate(d){if(!d)return'—';return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Ranking order: 5-star (strongest) first down to 1-star, then by last name.
+// Unrated players (rating 99) sort to the very end, below even 1-star.
+function rankValue(p){return p.rating===99?-1:p.rating;}
+function compareRank(a,b){return rankValue(b)-rankValue(a)||a.lastName.localeCompare(b.lastName);}
 
 function showUploadPreview(dk,players){
   document.getElementById(`upload-preview-${dk}`).innerHTML=`
@@ -1011,6 +1011,26 @@ function confirmResetDraft(dk){
     ()=>startDraft(dk)
   );
 }
+function confirmBackToSetup(dk){
+  const d=state.divs[dk];
+  const pickCount=d.picks.filter(p=>p.type==='draft'||p.type==='admin').length;
+  if(pickCount>0){
+    showConfirm(
+      '← Back to Setup',
+      `You have ${pickCount} pick${pickCount!==1?'s':''} made. Going back to Setup won't lose them yet, but clicking "Start Draft" again from there will clear all picks and restart from Round 1. Continue?`,
+      ()=>backToSetup(dk)
+    );
+  }else{
+    backToSetup(dk);
+  }
+}
+function backToSetup(dk){
+  const d=state.divs[dk];
+  if(d.timerInterval){clearInterval(d.timerInterval);d.timerInterval=null;}
+  d.phase='setup';
+  renderSetup(dk);
+  safeSave();
+}
 function startDraft(dk){
   const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
   // Setup screen's timer controls only exist before the draft starts — if this is a
@@ -1058,6 +1078,7 @@ function renderDraft(dk){
   document.getElementById(`app-${dk}`).innerHTML=`
     <div style="margin-bottom:14px;" class="flex-between">
       <div>
+        <button onclick="confirmBackToSetup('${dk}')" style="background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;padding:0;margin-bottom:5px;letter-spacing:.5px;text-transform:uppercase;">← Back to Setup</button>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--gold);">${cfg.label} — Live Draft</div>
         <div style="color:var(--muted);font-size:12px;">Pick ${Math.min(d.currentPick+1,d.draftOrder.length)} of ${d.draftOrder.length} · ${avail} available</div>
       </div>
@@ -1361,7 +1382,7 @@ function updateTimerUI(dk){
 }
 function autoPickOne(dk){
   const d=state.divs[dk];
-  const avail=d.players.filter(p=>!p.drafted).sort((a,b)=>a.rating-b.rating||a.lastName.localeCompare(b.lastName));
+  const avail=d.players.filter(p=>!p.drafted).sort(compareRank);
   if(avail.length&&d.currentPick<d.draftOrder.length)executePick(dk,avail[0]);
 }
 
@@ -1453,10 +1474,7 @@ function submitAddPlayer(){
 
   // Add to players and re-rank
   d.players.push(newPlayer);
-  d.players.filter(p=>!p.drafted).sort((a,b)=>{
-    if(a.rating!==b.rating)return a.rating-b.rating;
-    return a.lastName.localeCompare(b.lastName);
-  }).forEach((p,i)=>{if(!p.drafted)p.rank=i+1;});
+  d.players.filter(p=>!p.drafted).sort(compareRank).forEach((p,i)=>{if(!p.drafted)p.rank=i+1;});
 
   closeAddPlayerModal();
 
@@ -1619,7 +1637,7 @@ function autoComplete(dk){
     const d=state.divs[dk];
     if(d.timerInterval){clearInterval(d.timerInterval);d.timerInterval=null;}
     while(d.currentPick<d.draftOrder.length){
-      const avail=d.players.filter(p=>!p.drafted).sort((a,b)=>a.rating-b.rating||a.lastName.localeCompare(b.lastName));
+      const avail=d.players.filter(p=>!p.drafted).sort(compareRank);
       if(!avail.length){d.currentPick=d.draftOrder.length;break;}
       const ord=d.draftOrder[d.currentPick];
       const player=avail[0];
@@ -2329,10 +2347,7 @@ function submitEditPlayer(){
   closeEditPlayerModal();
 
   // Re-sort undrafted players
-  d.players.filter(p2=>!p2.drafted).sort((a,b)=>{
-    if(a.rating!==b.rating)return a.rating-b.rating;
-    return a.lastName.localeCompare(b.lastName);
-  }).forEach((p2,i)=>{if(!p2.drafted)p2.rank=i+1;});
+  d.players.filter(p2=>!p2.drafted).sort(compareRank).forEach((p2,i)=>{if(!p2.drafted)p2.rank=i+1;});
 
   if(savedPhase==='draft')renderDraft(savedDk);
   else if(savedPhase==='setup'||savedPhase==='setup-ready')renderSetup(savedDk);
@@ -2350,10 +2365,7 @@ function deletePlayer(dk,pid){
     d.players=d.players.filter(pl=>pl.id!==pid);
     d.preAssigns=d.preAssigns.filter(a=>a.playerId!==pid);
     // Re-rank
-    d.players.filter(p2=>!p2.drafted).sort((a,b)=>{
-      if(a.rating!==b.rating)return a.rating-b.rating;
-      return a.lastName.localeCompare(b.lastName);
-    }).forEach((p2,i)=>{if(!p2.drafted)p2.rank=i+1;});
+    d.players.filter(p2=>!p2.drafted).sort(compareRank).forEach((p2,i)=>{if(!p2.drafted)p2.rank=i+1;});
     const phase=d.phase;
     if(phase==='draft')renderDraft(dk);
     else if(phase==='setup'||phase==='setup-ready')renderSetup(dk);
@@ -2398,8 +2410,7 @@ function checkAutoPickTrigger(dk){
   if(!d.autoCoaches.has(curPick.teamIdx))return; // not an auto coach
 
   // Find best available player
-  const avail=d.players.filter(p=>!p.drafted).sort((a,b)=>
-    a.rating-b.rating||a.lastName.localeCompare(b.lastName));
+  const avail=d.players.filter(p=>!p.drafted).sort(compareRank);
   if(!avail.length)return;
   const player=avail[0];
 
@@ -2426,8 +2437,7 @@ function checkAutoPickTrigger(dk){
       clearInterval(autoPickTimer);
       autoPickTimer=null;
       // Fire the pick — re-check player still available
-      const stillAvail=d.players.filter(p=>!p.drafted).sort((a,b)=>
-        a.rating-b.rating||a.lastName.localeCompare(b.lastName));
+      const stillAvail=d.players.filter(p=>!p.drafted).sort(compareRank);
       if(stillAvail.length&&d.currentPick<d.draftOrder.length){
         // Still same coach's turn?
         const pick=d.draftOrder[d.currentPick];
@@ -2524,10 +2534,7 @@ function printRoster(dk){
   const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
   if(!d.players||!d.players.length){alert('No players loaded.');return;}
 
-  const players=[...d.players].sort((a,b)=>{
-    if(a.rating!==b.rating)return a.rating-b.rating;
-    return a.lastName.localeCompare(b.lastName);
-  });
+  const players=[...d.players].sort(compareRank);
 
   if(typeof XLSX==='undefined'){
     alert('Excel library not loaded. Please open via http://localhost:8080 to use this feature.');
