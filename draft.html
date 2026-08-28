@@ -714,7 +714,15 @@ function finalizePlayers(players,dk){
 }
 
 function s(v){return String(v||'').trim();}
-function toBool(v){const t=String(v||'').trim().toLowerCase();return t==='y'||t==='yes'||t==='true'||t==='1'||t==='x'||t==='sibling'||t==='siblings';}
+// Any non-blank value counts as true, except an explicit negative — matches how
+// coaches actually fill in a "Has Sibling" column (write something if yes, leave
+// it blank if no), instead of requiring one exact magic word.
+function toBool(v){
+  const t=String(v||'').trim().toLowerCase();
+  if(!t)return false;
+  if(t==='n'||t==='no'||t==='false'||t==='0'||t==='na'||t==='n/a'||t==='none')return false;
+  return true;
+}
 function isCoach(v){if(!v)return false;return['yes','y','true','1','coach','x'].includes(String(v).trim().toLowerCase());}
 function fmtDate(d){if(!d)return'—';return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
