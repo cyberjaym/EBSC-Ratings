@@ -794,7 +794,10 @@ function renderSetup(dk){
         <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;color:var(--gold);">${cfg.label} — Setup</div>
         <div style="color:var(--muted);font-size:13px;">${d.players.length} players · ${cfg.teams} teams · ${numDraftable} draftable</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('app-${dk}').innerHTML=buildUpload('${dk}');bindDrop('${dk}')">← Back</button>
+      <div class="flex-gap">
+        <button class="btn btn-outline btn-sm" onclick="printRoster('${dk}')" style="border-color:rgba(82,183,136,.5);color:var(--line);" title="Export print-ready draft sheet">🖨 Print Sheet</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('app-${dk}').innerHTML=buildUpload('${dk}');bindDrop('${dk}')">← Back</button>
+      </div>
     </div>
 
     <div class="setup-cols">
@@ -2533,6 +2536,25 @@ function doneSearch(dk,cmd){
 }
 
 // ===================== PRINT ROSTER =====================
+// Who this player is currently assigned to, as of right now — checks actual draft
+// state first (covers picks made so far if this is exported mid-draft), then falls
+// back to Setup's pre-assign list (covers pre-assigns made before Start Draft, whose
+// player.drafted/draftTeam fields don't get set until the draft actually starts).
+function currentAssignmentLabel(d,p){
+  if(p.drafted&&p.draftTeam){
+    if(p.draftType==='pre')return p.draftTeam+' (Pre)';
+    if(p.draftType==='admin')return p.draftTeam+' (Admin)';
+    if(p.draftType==='post')return p.draftTeam+' (Post)';
+    return p.draftTeam;
+  }
+  const pa=d.preAssigns.find(a=>a.playerId===p.id);
+  if(pa){
+    const coach=d.coaches[pa.teamIdx];
+    if(coach)return coach.name+' (Pre)';
+  }
+  return '';
+}
+
 function printRoster(dk){
   const d=state.divs[dk];const cfg=DIV_CONFIG[dk];
   if(!d.players||!d.players.length){alert('No players loaded.');return;}
@@ -2547,19 +2569,29 @@ function printRoster(dk){
   try{
     const wb=XLSX.utils.book_new();
 
-    // ── Header row ──
-    const headers=['#','First Name','Last Name','Jersey Size','Rating','Seasons','Prior Coach','Has Sibling'];
+    // ── Header row — every value captured from the load file, plus a blank
+    // write-in column for coaches to track picks on paper as the draft happens ──
+    const headers=['#','Org Member ID','Division','First Name','Last Name','Parent Email','Phone Number','Jersey Size','Seasons','Rating','Parent Is Coach','Prior Coach','Has Sibling','Notes','Drafted By'];
+    const RATING_COL=9;
+    const DRAFTED_BY_COL=headers.length-1;
 
     // ── Data rows ──
     const rows=players.map((p,i)=>[
       i+1,
+      p.orgMemberId||'',
+      p.division||'',
       p.firstName||'',
       p.lastName||'',
+      p.email||'',
+      p.phone||'',
       p.jerseySize||'',
-      p.rating===99||p.rating===null?'':p.rating,
       p.seasons||'',
+      p.rating===99||p.rating===null?'':p.rating,
+      p.workBond||'',
       p.priorCoach||'',
-      p.hasSibling?'Yes':''
+      p.hasSibling?'Yes':'',
+      p.notes||'',
+      currentAssignmentLabel(d,p)
     ]);
 
     const sheetData=[headers,...rows];
@@ -2568,38 +2600,38 @@ function printRoster(dk){
     // ── Column widths ──
     ws['!cols']=[
       {wch:4},   // #
-      {wch:14},  // First Name
-      {wch:16},  // Last Name
+      {wch:13},  // Org Member ID
+      {wch:9},   // Division
+      {wch:13},  // First Name
+      {wch:15},  // Last Name
+      {wch:24},  // Parent Email
+      {wch:13},  // Phone Number
       {wch:10},  // Jersey Size
+      {wch:8},   // Seasons
       {wch:7},   // Rating
-      {wch:9},   // Seasons
-      {wch:18},  // Prior Coach
-      {wch:12},  // Has Sibling
+      {wch:13},  // Parent Is Coach
+      {wch:16},  // Prior Coach
+      {wch:11},  // Has Sibling
+      {wch:18},  // Notes
+      {wch:22},  // Drafted By
     ];
 
     // ── Cell styles ──
-    const numRows=sheetData.length;
     const numCols=headers.length;
 
     // Style helpers
     const headerFill={patternType:'solid',fgColor:{rgb:'1A472A'}};      // dark green
     const headerFont={bold:true,color:{rgb:'F4C430'},sz:11,name:'Calibri'};
-    const titleFill={patternType:'solid',fgColor:{rgb:'0D2416'}};        // darker green
-    const oddFill={patternType:'solid',fgColor:{rgb:'F0F7F0'}};          // very light green
-    const evenFill={patternType:'solid',fgColor:{rgb:'FFFFFF'}};
     const ratingColors={1:{rgb:'2ECC71'},2:{rgb:'27AE60'},3:{rgb:'F39C12'},4:{rgb:'E67E22'},5:{rgb:'E74C3C'}};
     const border={top:{style:'thin',color:{rgb:'C8DCC8'}},bottom:{style:'thin',color:{rgb:'C8DCC8'}},left:{style:'thin',color:{rgb:'C8DCC8'}},right:{style:'thin',color:{rgb:'C8DCC8'}}};
     const headerBorder={top:{style:'medium',color:{rgb:'F4C430'}},bottom:{style:'medium',color:{rgb:'F4C430'}},left:{style:'thin',color:{rgb:'2D6A4F'}},right:{style:'thin',color:{rgb:'2D6A4F'}}};
+    const writeInBorder={top:{style:'dashed',color:{rgb:'B0B0B0'}},bottom:{style:'dashed',color:{rgb:'B0B0B0'}},left:{style:'dashed',color:{rgb:'B0B0B0'}},right:{style:'dashed',color:{rgb:'B0B0B0'}}};
 
-    // Add a title row above headers by inserting a row
-    // We use a merged cell approach via ws['!merges']
-    // First, shift all existing data down 1 row
-    const titleRow=[`EBSC Fall 2026 — ${cfg.label} Division Draft Sheet`,'','','','','','',''];
+    // Title row above headers, merged across every column
+    const titleRow=[`EBSC Fall 2026 — ${cfg.label} Division Draft Sheet`,...Array(numCols-1).fill('')];
     const finalData=[titleRow,headers,...rows];
     const wsF=XLSX.utils.aoa_to_sheet(finalData);
     wsF['!cols']=ws['!cols'];
-
-    // Merge title row across all columns
     wsF['!merges']=[{s:{r:0,c:0},e:{r:0,c:numCols-1}}];
 
     // Style every cell
@@ -2631,8 +2663,9 @@ function printRoster(dk){
         } else {
           // Data rows
           const isOdd=(r%2===0);
-          const isRatingCol=(c===4);
-          const ratingVal=finalData[r][4];
+          const isRatingCol=(c===RATING_COL);
+          const isDraftedByCol=(c===DRAFTED_BY_COL);
+          const ratingVal=finalData[r][RATING_COL];
           let fillColor=isOdd?'EFF7EF':'FFFFFF';
 
           let font={sz:10,name:'Calibri',color:{rgb:'1A1A1A'}};
@@ -2640,40 +2673,53 @@ function printRoster(dk){
             font={...font,bold:true,color:{rgb:'FFFFFF'}};
             fillColor=ratingColors[ratingVal].rgb;
           }
+          if(isDraftedByCol){
+            font={...font,italic:!finalData[r][c]};
+            if(!finalData[r][c])fillColor='FFFDF0'; // pale yellow — blank, write here
+          }
           // Bold name columns
-          if(c===1||c===2)font={...font,bold:true};
+          if(c===3||c===4)font={...font,bold:true};
           // Center certain cols
-          const centered=[0,3,4,5];
+          const centered=[0,2,7,8,9,12];
           cell.s={
             fill:{patternType:'solid',fgColor:{rgb:fillColor}},
             font,
             alignment:{horizontal:centered.includes(c)?'center':'left',vertical:'center'},
-            border
+            border:isDraftedByCol?writeInBorder:border
           };
         }
       }
     }
 
-    // Row heights
-    wsF['!rows']=[{hpt:28},...Array(totalRows-1).fill({hpt:18})];
-    wsF['!rows'][1]={hpt:22};
+    // Row heights — extra tall so there's room to write in "Drafted By" by hand
+    wsF['!rows']=[{hpt:28},...Array(totalRows-1).fill({hpt:20})];
+    wsF['!rows'][1]={hpt:24};
+
+    // Freeze the header rows so they stay visible while scrolling a long roster
+    wsF['!freeze']={xSplit:0,ySplit:2};
 
     // Print settings — landscape, fit to 1 page wide
     wsF['!pageSetup']={orientation:'landscape',fitToWidth:1,fitToHeight:0,fitToPage:true};
     wsF['!margins']={left:0.5,right:0.5,top:0.75,bottom:0.75,header:0.3,footer:0.3};
 
-    // Add a blank "Draft Tracking" sheet — coaches can write picks on paper
+    // Add a blank "Draft Tracking" sheet — coaches can write picks on paper, organized
+    // by round/pick instead of by player. Slots already spoken for (pre-assigned or
+    // drafted so far) are filled in; everything else is left blank to write in.
     const trackHeaders=['Round','Pick','Team / Coach','Player Drafted','Notes'];
     const trackRows=[[...trackHeaders]];
-    // Generate all snake draft slots
     const numTeams=cfg.teams;
-    const estRounds=Math.ceil(players.length/numTeams);
+    // Match startDraft()'s own round count: only pre-assigned players shrink it —
+    // admin/regular picks happen after the round count is already fixed.
+    const preAssignedIds=new Set(d.preAssigns.map(a=>a.playerId));
+    const preAssignedCount=players.filter(p=>preAssignedIds.has(p.id)||p.draftType==='pre').length;
+    const estRounds=Math.max(1,Math.ceil((players.length-preAssignedCount)/numTeams));
     let pick=1;
     for(let round=1;round<=estRounds;round++){
       const fwd=round%2===1;
       for(let t=0;t<numTeams;t++){
-        const teamNum=fwd?t+1:numTeams-t;
-        trackRows.push([round,pick,'Team '+teamNum,'','']);
+        const teamIdx=fwd?t:numTeams-1-t;
+        const teamName=d.coaches[teamIdx]?.name||('Team '+(teamIdx+1));
+        trackRows.push([round,pick,teamName,'','']);
         pick++;
       }
     }
